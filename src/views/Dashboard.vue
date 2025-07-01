@@ -1,55 +1,66 @@
 <template>
   <div class="dashboard">
     <!-- Welcome Section -->
-    <v-row class="mb-6">
-      <v-col cols="12">
-        <v-card class="welcome-card" color="primary" dark>
-          <v-card-text class="pa-6">
-            <v-row align="center">
-              <v-col cols="12" md="8">
-                <h1 class="text-h4 font-weight-bold mb-2">
-                  Welcome back, {{ currentUser.name }}! 👋
-                </h1>
-                <p class="text-h6 opacity-90 mb-0">
-                  You have {{ pendingTasksCount }} pending tasks across {{ activeProjectsCount }} active projects.
-                </p>
-              </v-col>
-              <v-col cols="12" md="4" class="text-center text-md-right">
-                <v-btn
-                  size="large"
-                  color="white"
-                  variant="elevated"
-                  prepend-icon="mdi-plus"
-                  @click="createNewTask"
-                >
-                  Create New Task
-                </v-btn>
-              </v-col>
-            </v-row>
-          </v-card-text>
-        </v-card>
-      </v-col>
-    </v-row>
+    <v-card class="welcome-card mb-6" elevation="0">
+      <v-card-text class="pa-6">
+        <v-row align="center">
+          <v-col cols="12" md="8">
+            <h1 class="text-h4 text-white font-weight-bold mb-2">
+              Welcome back, {{ currentUser.name }}! 👋
+            </h1>
+            <p class="text-h6 text-white mb-4 opacity-90">
+              Here's what's happening with your projects today.
+            </p>
+            <div class="d-flex ga-3">
+              <v-btn
+                color="white"
+                variant="flat"
+                prepend-icon="mdi-plus"
+                @click="createNewTask"
+              >
+                Create Task
+              </v-btn>
+              <v-btn
+                color="white"
+                variant="outlined"
+                prepend-icon="mdi-view-dashboard"
+                @click="$router.push('/projects')"
+              >
+                View Projects
+              </v-btn>
+            </div>
+          </v-col>
+          <v-col cols="12" md="4" class="text-center">
+            <v-img
+              src="https://via.placeholder.com/300x200/1976D2/ffffff?text=Dashboard"
+              max-width="300"
+              class="mx-auto"
+            />
+          </v-col>
+        </v-row>
+      </v-card-text>
+    </v-card>
 
-    <!-- Quick Stats -->
+    <!-- Stats Cards -->
     <v-row class="mb-6">
       <v-col
-        v-for="stat in quickStats"
+        v-for="stat in dashboardStats"
         :key="stat.title"
-        cols="6"
-        md="3"
+        cols="12"
+        sm="6"
+        lg="3"
       >
-        <v-card class="stat-card h-100" :color="stat.color" variant="tonal">
+        <v-card class="stat-card h-100" elevation="2">
           <v-card-text class="pa-4">
             <div class="d-flex align-center justify-space-between">
               <div>
-                <p class="text-caption text-medium-emphasis mb-1">
-                  {{ stat.title }}
-                </p>
-                <h3 class="text-h4 font-weight-bold">
+                <h3 class="text-h4 font-weight-bold mb-1">
                   {{ stat.value }}
                 </h3>
-                <div class="d-flex align-center mt-2">
+                <p class="text-body-2 text-medium-emphasis mb-2">
+                  {{ stat.title }}
+                </p>
+                <div class="d-flex align-center">
                   <v-icon 
                     :color="stat.trend === 'up' ? 'success' : stat.trend === 'down' ? 'error' : 'warning'" 
                     size="16"
@@ -121,269 +132,198 @@
                         variant="flat"
                         class="mr-2"
                       >
-                        {{ task.priority.toUpperCase() }}
+                        {{ task.priority }}
                       </v-chip>
-                      <span class="text-caption">{{ getProjectName(task.projectId) }}</span>
+                      <span class="text-caption">
+                        {{ getProjectName(task.projectId) }}
+                      </span>
                     </v-list-item-subtitle>
                     
                     <template #append>
-                      <div class="d-flex align-center">
-                        <div v-if="task.assigneeIds.length > 0" class="avatar-group mr-2">
-                          <v-avatar
-                            v-for="userId in task.assigneeIds.slice(0, 2)"
-                            :key="userId"
-                            size="24"
-                          >
-                            <v-img :src="getUserById(userId)?.avatar" />
-                          </v-avatar>
-                          <span v-if="task.assigneeIds.length > 2" class="text-caption ml-1">
-                            +{{ task.assigneeIds.length - 2 }}
-                          </span>
-                        </div>
-                        <span v-if="task.dueDate" class="text-caption text-medium-emphasis">
-                          {{ formatDueDate(task.dueDate) }}
-                        </span>
+                      <div class="text-caption text-medium-emphasis">
+                        {{ task.dueDate ? formatDate(task.dueDate) : 'No due date' }}
                       </div>
                     </template>
                   </v-list-item>
-                  
                   <v-divider v-if="index < myTasks.slice(0, 10).length - 1" />
                 </template>
               </v-list>
-              
-              <v-card-actions v-if="myTasks.length > 10">
-                <v-btn
-                  variant="text"
-                  block
-                  :to="`/kanban/${currentProject?.id || ''}`"
-                >
-                  View All {{ myTasks.length }} Tasks
-                </v-btn>
-              </v-card-actions>
             </div>
             
             <!-- Priority View -->
-            <div v-else-if="tasksView === 'priority'" class="priority-view pa-4">
+            <div v-else-if="tasksView === 'priority'" class="pa-4">
               <div
-                v-for="priority in ['critical', 'high', 'medium', 'low']"
+                v-for="(tasks, priority) in tasksByPriority"
                 :key="priority"
                 class="priority-section mb-4"
+                :style="{ borderLeftColor: getPriorityColor(priority) }"
               >
-                <h6 class="text-subtitle-2 font-weight-bold mb-2 d-flex align-center">
-                  <v-icon
-                    :color="getPriorityColor(priority)"
-                    size="16"
-                    class="mr-2"
-                  >
-                    mdi-flag
-                  </v-icon>
-                  {{ priority.toUpperCase() }}
-                  <v-chip size="x-small" class="ml-2">
-                    {{ tasksByPriority[priority]?.length || 0 }}
-                  </v-chip>
-                </h6>
-                
-                <div v-if="tasksByPriority[priority]?.length > 0" class="d-flex flex-wrap ga-2">
+                <h4 class="text-subtitle-1 font-weight-medium mb-3 text-capitalize">
+                  {{ priority }} Priority ({{ tasks.length }})
+                </h4>
+                <div class="d-flex ga-2 flex-wrap">
                   <v-card
-                    v-for="task in tasksByPriority[priority].slice(0, 6)"
+                    v-for="task in tasks.slice(0, 3)"
                     :key="task.id"
-                    variant="outlined"
-                    size="small"
-                    class="task-mini-card cursor-pointer"
+                    class="task-mini-card"
+                    elevation="1"
                     @click="goToTask(task)"
                   >
-                    <v-card-text class="pa-2">
-                      <p class="text-caption font-weight-medium mb-1 text-truncate">
+                    <v-card-text class="pa-3">
+                      <div class="text-body-2 font-weight-medium mb-1">
                         {{ task.title }}
-                      </p>
-                      <p class="text-caption text-medium-emphasis mb-0">
+                      </div>
+                      <div class="text-caption text-medium-emphasis">
                         {{ getProjectName(task.projectId) }}
-                      </p>
+                      </div>
                     </v-card-text>
                   </v-card>
                 </div>
-                
-                <p v-else class="text-caption text-medium-emphasis mb-0">
-                  No {{ priority }} priority tasks
-                </p>
               </div>
             </div>
             
             <!-- Due Date View -->
-            <div v-else-if="tasksView === 'due'" class="due-view pa-4">
+            <div v-else-if="tasksView === 'due'" class="pa-4">
               <div class="mb-4">
-                <h6 class="text-subtitle-2 font-weight-bold mb-2 text-error d-flex align-center">
-                  <v-icon color="error" size="16" class="mr-2">mdi-alert-circle</v-icon>
-                  OVERDUE
-                  <v-chip size="x-small" color="error" class="ml-2">
-                    {{ overdueTasks.length }}
-                  </v-chip>
-                </h6>
-                
-                <div v-if="overdueTasks.length > 0" class="d-flex flex-wrap ga-2">
+                <h4 class="text-subtitle-1 font-weight-medium mb-3 text-error">
+                  Overdue ({{ overdueTasks.length }})
+                </h4>
+                <div class="d-flex ga-2 flex-wrap">
                   <v-card
-                    v-for="task in overdueTasks.slice(0, 6)"
+                    v-for="task in overdueTasks.slice(0, 3)"
                     :key="task.id"
-                    variant="outlined"
+                    class="task-mini-card"
+                    elevation="1"
                     color="error"
-                    size="small"
-                    class="task-mini-card cursor-pointer"
+                    variant="tonal"
                     @click="goToTask(task)"
                   >
-                    <v-card-text class="pa-2">
-                      <p class="text-caption font-weight-medium mb-1 text-truncate">
+                    <v-card-text class="pa-3">
+                      <div class="text-body-2 font-weight-medium mb-1">
                         {{ task.title }}
-                      </p>
-                      <p class="text-caption text-medium-emphasis mb-0">
-                        Due {{ formatDueDate(task.dueDate) }}
-                      </p>
+                      </div>
+                      <div class="text-caption">
+                        Due: {{ formatDate(task.dueDate) }}
+                      </div>
                     </v-card-text>
                   </v-card>
                 </div>
-                
-                <p v-else class="text-caption text-medium-emphasis mb-0">
-                  No overdue tasks 🎉
-                </p>
               </div>
               
               <div>
-                <h6 class="text-subtitle-2 font-weight-bold mb-2 text-warning d-flex align-center">
-                  <v-icon color="warning" size="16" class="mr-2">mdi-clock-alert</v-icon>
-                  DUE THIS WEEK
-                  <v-chip size="x-small" color="warning" class="ml-2">
-                    {{ dueThisWeekTasks.length }}
-                  </v-chip>
-                </h6>
-                
-                <div v-if="dueThisWeekTasks.length > 0" class="d-flex flex-wrap ga-2">
+                <h4 class="text-subtitle-1 font-weight-medium mb-3 text-warning">
+                  Due This Week ({{ dueThisWeek.length }})
+                </h4>
+                <div class="d-flex ga-2 flex-wrap">
                   <v-card
-                    v-for="task in dueThisWeekTasks.slice(0, 6)"
+                    v-for="task in dueThisWeek.slice(0, 3)"
                     :key="task.id"
-                    variant="outlined"
+                    class="task-mini-card"
+                    elevation="1"
                     color="warning"
-                    size="small"
-                    class="task-mini-card cursor-pointer"
+                    variant="tonal"
                     @click="goToTask(task)"
                   >
-                    <v-card-text class="pa-2">
-                      <p class="text-caption font-weight-medium mb-1 text-truncate">
+                    <v-card-text class="pa-3">
+                      <div class="text-body-2 font-weight-medium mb-1">
                         {{ task.title }}
-                      </p>
-                      <p class="text-caption text-medium-emphasis mb-0">
-                        Due {{ formatDueDate(task.dueDate) }}
-                      </p>
+                      </div>
+                      <div class="text-caption">
+                        Due: {{ formatDate(task.dueDate) }}
+                      </div>
                     </v-card-text>
                   </v-card>
                 </div>
-                
-                <p v-else class="text-caption text-medium-emphasis mb-0">
-                  No tasks due this week
-                </p>
               </div>
             </div>
           </v-card-text>
+          
+          <v-divider />
+          
+          <v-card-actions>
+            <v-btn
+              variant="text"
+              prepend-icon="mdi-eye"
+              @click="$router.push('/kanban')"
+            >
+              View All Tasks
+            </v-btn>
+          </v-card-actions>
         </v-card>
       </v-col>
-      
+
       <!-- Right Sidebar -->
       <v-col cols="12" lg="4">
-        <v-row>
-          <!-- Recent Activity -->
-          <v-col cols="12">
-            <v-card class="mb-4">
-              <v-card-title class="text-h6">Recent Activity</v-card-title>
-              <v-divider />
-              <v-card-text class="pa-0">
-                <v-list lines="two" class="py-0">
-                  <v-list-item
-                    v-for="(activity, index) in recentActivity"
-                    :key="activity.id"
-                    class="activity-item"
-                  >
-                    <template #prepend>
-                      <v-avatar
-                        size="32"
-                        :color="activity.color"
-                        variant="tonal"
-                      >
-                        <v-icon size="16">{{ activity.icon }}</v-icon>
-                      </v-avatar>
-                    </template>
-                    
-                    <v-list-item-title class="text-body-2">
-                      {{ activity.message }}
-                    </v-list-item-title>
-                    
-                    <v-list-item-subtitle class="text-caption">
-                      {{ formatActivityTime(activity.timestamp) }}
-                    </v-list-item-subtitle>
-                    
-                    <v-divider v-if="index < recentActivity.length - 1" />
-                  </v-list-item>
-                </v-list>
-              </v-card-text>
-            </v-card>
-          </v-col>
-          
-          <!-- Project Progress -->
-          <v-col cols="12">
-            <v-card>
-              <v-card-title class="text-h6">Project Progress</v-card-title>
-              <v-divider />
-              <v-card-text>
-                <div
-                  v-for="project in activeProjects"
-                  :key="project.id"
-                  class="project-progress mb-4"
-                >
-                  <div class="d-flex align-center justify-space-between mb-2">
-                    <div class="d-flex align-center">
-                      <v-avatar size="24" :color="project.color" class="mr-2">
-                        <span class="text-caption text-white">
-                          {{ project.name.charAt(0) }}
-                        </span>
-                      </v-avatar>
-                      <span class="text-body-2 font-weight-medium">
-                        {{ project.name }}
-                      </span>
-                    </div>
-                    <span class="text-caption text-medium-emphasis">
-                      {{ getProjectProgress(project.id) }}%
-                    </span>
-                  </div>
-                  
-                  <v-progress-linear
-                    :model-value="getProjectProgress(project.id)"
-                    :color="project.color"
-                    height="6"
-                    rounded
-                  />
-                  
-                  <div class="d-flex justify-space-between mt-1">
-                    <span class="text-caption text-medium-emphasis">
-                      {{ getProjectTaskCounts(project.id).completed }} completed
-                    </span>
-                    <span class="text-caption text-medium-emphasis">
-                      {{ getProjectTaskCounts(project.id).total }} total
-                    </span>
-                  </div>
-                </div>
-              </v-card-text>
-            </v-card>
-          </v-col>
-        </v-row>
+        <!-- Project Progress -->
+        <v-card class="mb-4">
+          <v-card-title>Project Progress</v-card-title>
+          <v-card-text>
+            <div
+              v-for="project in activeProjects.slice(0, 3)"
+              :key="project.id"
+              class="project-progress mb-4"
+            >
+              <div class="d-flex align-center justify-space-between mb-2">
+                <span class="font-weight-medium">{{ project.name }}</span>
+                <span class="text-caption">
+                  {{ getProjectProgress(project.id).completed }}/{{ getProjectProgress(project.id).total }}
+                </span>
+              </div>
+              <v-progress-linear
+                :model-value="(getProjectProgress(project.id).completed / getProjectProgress(project.id).total) * 100"
+                :color="project.color"
+                height="8"
+                rounded
+              />
+            </div>
+          </v-card-text>
+          <v-card-actions>
+            <v-btn
+              variant="text"
+              prepend-icon="mdi-folder-multiple"
+              @click="$router.push('/projects')"
+            >
+              View All Projects
+            </v-btn>
+          </v-card-actions>
+        </v-card>
+
+        <!-- Recent Activity -->
+        <v-card>
+          <v-card-title>Recent Activity</v-card-title>
+          <v-list density="compact">
+            <v-list-item
+              v-for="activity in recentActivities"
+              :key="activity.id"
+              class="activity-item"
+            >
+              <template #prepend>
+                <v-avatar size="24" :color="activity.color" variant="tonal">
+                  <v-icon size="12">{{ activity.icon }}</v-icon>
+                </v-avatar>
+              </template>
+              
+              <v-list-item-title class="text-body-2">
+                {{ activity.message }}
+              </v-list-item-title>
+              
+              <v-list-item-subtitle class="text-caption">
+                {{ formatTimeAgo(activity.timestamp) }}
+              </v-list-item-subtitle>
+            </v-list-item>
+          </v-list>
+        </v-card>
       </v-col>
     </v-row>
   </div>
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useProjectsStore } from '@/stores/projects'
 import { useTasksStore } from '@/stores/tasks'
 
-// Composables
 const router = useRouter()
 const projectsStore = useProjectsStore()
 const tasksStore = useTasksStore()
@@ -391,161 +331,112 @@ const tasksStore = useTasksStore()
 // Local state
 const tasksView = ref('list')
 
-// Mock current user
+// Mock current user (in real app, this would come from auth store)
 const currentUser = ref({
   id: 'user-1',
   name: 'John Doe',
-  email: 'john@example.com',
-  avatar: 'https://i.pravatar.cc/150?img=1',
-  role: 'Project Manager'
+  email: 'john@example.com'
 })
 
-// Mock recent activity
-const recentActivity = ref([
-  {
-    id: 1,
-    message: 'Mike Johnson completed "Setup Project Structure"',
-    timestamp: new Date(Date.now() - 1000 * 60 * 30),
-    icon: 'mdi-check-circle',
-    color: 'success'
-  },
-  {
-    id: 2,
-    message: 'New task "API Authentication" was created',
-    timestamp: new Date(Date.now() - 1000 * 60 * 60 * 2),
-    icon: 'mdi-plus-circle',
-    color: 'primary'
-  },
-  {
-    id: 3,
-    message: 'Sarah Wilson updated "Design User Authentication"',
-    timestamp: new Date(Date.now() - 1000 * 60 * 60 * 4),
-    icon: 'mdi-pencil',
-    color: 'info'
-  },
-  {
-    id: 4,
-    message: 'Project "E-commerce Platform" roadmap updated',
-    timestamp: new Date(Date.now() - 1000 * 60 * 60 * 24),
-    icon: 'mdi-map',
-    color: 'warning'
-  }
-])
-
 // Store getters
-const currentProject = computed(() => projectsStore.currentProject)
+const allProjects = computed(() => projectsStore.projects)
+const activeProjects = computed(() => projectsStore.activeProjects)
 const allTasks = computed(() => tasksStore.tasks)
-const kanbanColumns = computed(() => tasksStore.kanbanColumns)
-const tasksByPriority = computed(() => tasksStore.tasksByPriority)
-const overdueTasks = computed(() => tasksStore.overdueTasks)
 
 // Computed
-const activeProjects = computed(() => 
-  projectsStore.projects.filter(p => p.status === 'active')
-)
-
-const activeProjectsCount = computed(() => activeProjects.value.length)
-
-const pendingTasksCount = computed(() => 
-  allTasks.value.filter(task => 
-    task.columnId !== 'done' && task.columnId !== 'cancelled'
-  ).length
-)
-
 const myTasks = computed(() => 
-  allTasks.value.filter(task => 
-    task.assigneeIds.includes(currentUser.value.id) &&
-    task.columnId !== 'done'
-  ).sort((a, b) => {
-    // Sort by priority and due date
-    const priorityOrder = { critical: 4, high: 3, medium: 2, low: 1 }
-    const aPriority = priorityOrder[a.priority] || 0
-    const bPriority = priorityOrder[b.priority] || 0
-    
-    if (aPriority !== bPriority) {
-      return bPriority - aPriority
-    }
-    
-    if (a.dueDate && b.dueDate) {
-      return new Date(a.dueDate) - new Date(b.dueDate)
-    }
-    
-    return a.dueDate ? -1 : 1
-  })
+  allTasks.value.filter(task => task.assigneeId === currentUser.value.id)
 )
 
-const dueThisWeekTasks = computed(() => {
+const tasksByPriority = computed(() => {
+  const priorities = { critical: [], high: [], medium: [], low: [] }
+  myTasks.value.forEach(task => {
+    if (priorities[task.priority]) {
+      priorities[task.priority].push(task)
+    }
+  })
+  return priorities
+})
+
+const overdueTasks = computed(() => {
+  const now = new Date()
+  return myTasks.value.filter(task => {
+    if (!task.dueDate || task.columnId === 'done') return false
+    return new Date(task.dueDate) < now
+  })
+})
+
+const dueThisWeek = computed(() => {
   const now = new Date()
   const weekFromNow = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000)
   
-  return allTasks.value.filter(task => {
+  return myTasks.value.filter(task => {
     if (!task.dueDate || task.columnId === 'done') return false
     const dueDate = new Date(task.dueDate)
     return dueDate >= now && dueDate <= weekFromNow
   })
 })
 
-const quickStats = computed(() => [
+const dashboardStats = computed(() => [
   {
-    title: 'Total Tasks',
-    value: allTasks.value.length,
-    change: '+12%',
+    title: 'Active Projects',
+    value: activeProjects.value.length,
+    icon: 'mdi-folder-multiple',
+    color: 'primary',
     trend: 'up',
+    change: '+2 this month'
+  },
+  {
+    title: 'My Tasks',
+    value: myTasks.value.filter(t => t.columnId !== 'done').length,
     icon: 'mdi-format-list-checks',
-    color: 'primary'
-  },
-  {
-    title: 'In Progress',
-    value: allTasks.value.filter(t => t.columnId === 'in-progress').length,
-    change: '+8%',
-    trend: 'up',
-    icon: 'mdi-clock',
-    color: 'warning'
-  },
-  {
-    title: 'Completed',
-    value: allTasks.value.filter(t => t.columnId === 'done').length,
-    change: '+15%',
-    trend: 'up',
-    icon: 'mdi-check-circle',
-    color: 'success'
+    color: 'info',
+    trend: 'down',
+    change: '-3 from last week'
   },
   {
     title: 'Overdue',
     value: overdueTasks.value.length,
-    change: '-3%',
-    trend: 'down',
-    icon: 'mdi-alert-circle',
-    color: 'error'
+    icon: 'mdi-clock-alert',
+    color: 'error',
+    trend: 'neutral',
+    change: 'Same as last week'
+  },
+  {
+    title: 'Completed',
+    value: myTasks.value.filter(t => t.columnId === 'done').length,
+    icon: 'mdi-check-circle',
+    color: 'success',
+    trend: 'up',
+    change: '+5 this week'
+  }
+])
+
+const recentActivities = computed(() => [
+  {
+    id: 1,
+    message: 'Task "Setup Project Structure" completed',
+    icon: 'mdi-check-circle',
+    color: 'success',
+    timestamp: new Date(Date.now() - 1000 * 60 * 30) // 30 minutes ago
+  },
+  {
+    id: 2,
+    message: 'New task assigned: "Design User Interface"',
+    icon: 'mdi-account-plus',
+    color: 'primary',
+    timestamp: new Date(Date.now() - 1000 * 60 * 60 * 2) // 2 hours ago
+  },
+  {
+    id: 3,
+    message: 'Project "E-commerce Platform" updated',
+    icon: 'mdi-update',
+    color: 'info',
+    timestamp: new Date(Date.now() - 1000 * 60 * 60 * 6) // 6 hours ago
   }
 ])
 
 // Methods
-const getUserById = (userId) => {
-  return projectsStore.getUserById(userId)
-}
-
-const getProjectName = (projectId) => {
-  const project = projectsStore.projects.find(p => p.id === projectId)
-  return project?.name || 'Unknown Project'
-}
-
-const getColumnColor = (columnId) => {
-  const column = kanbanColumns.value.find(col => col.id === columnId)
-  return column?.color || 'grey'
-}
-
-const getColumnIcon = (columnId) => {
-  const icons = {
-    'backlog': 'mdi-inbox',
-    'todo': 'mdi-format-list-checks',
-    'in-progress': 'mdi-clock',
-    'review': 'mdi-eye',
-    'done': 'mdi-check-circle'
-  }
-  return icons[columnId] || 'mdi-circle'
-}
-
 const getPriorityColor = (priority) => {
   const colors = {
     critical: 'error',
@@ -556,58 +447,51 @@ const getPriorityColor = (priority) => {
   return colors[priority] || 'grey'
 }
 
-const formatDueDate = (dueDate) => {
-  if (!dueDate) return ''
-  
-  const date = new Date(dueDate)
-  const now = new Date()
-  const diffTime = date.getTime() - now.getTime()
-  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
-  
-  if (diffDays < 0) {
-    return `${Math.abs(diffDays)} days ago`
-  } else if (diffDays === 0) {
-    return 'Today'
-  } else if (diffDays === 1) {
-    return 'Tomorrow'
-  } else if (diffDays <= 7) {
-    return `${diffDays} days`
-  } else {
-    return date.toLocaleDateString()
-  }
+const getColumnColor = (columnId) => {
+  const column = tasksStore.kanbanColumns.find(col => col.id === columnId)
+  return column?.color || 'grey'
 }
 
-const formatActivityTime = (timestamp) => {
-  const now = new Date()
-  const diff = now - timestamp
-  const minutes = Math.floor(diff / (1000 * 60))
-  const hours = Math.floor(diff / (1000 * 60 * 60))
-  const days = Math.floor(diff / (1000 * 60 * 60 * 24))
-  
-  if (minutes < 60) {
-    return `${minutes}m ago`
-  } else if (hours < 24) {
-    return `${hours}h ago`
-  } else {
-    return `${days}d ago`
-  }
+const getColumnIcon = (columnId) => {
+  const column = tasksStore.kanbanColumns.find(col => col.id === columnId)
+  return column?.icon || 'mdi-circle'
+}
+
+const getProjectName = (projectId) => {
+  const project = allProjects.value.find(p => p.id === projectId)
+  return project?.name || 'Unknown Project'
 }
 
 const getProjectProgress = (projectId) => {
-  const projectTasks = allTasks.value.filter(task => task.projectId === projectId)
-  if (projectTasks.length === 0) return 0
-  
-  const completedTasks = projectTasks.filter(task => task.columnId === 'done')
-  return Math.round((completedTasks.length / projectTasks.length) * 100)
-}
-
-const getProjectTaskCounts = (projectId) => {
   const projectTasks = allTasks.value.filter(task => task.projectId === projectId)
   const completed = projectTasks.filter(task => task.columnId === 'done').length
   
   return {
     total: projectTasks.length,
     completed
+  }
+}
+
+const formatDate = (dateString) => {
+  return new Date(dateString).toLocaleDateString('en-US', {
+    month: 'short',
+    day: 'numeric'
+  })
+}
+
+const formatTimeAgo = (timestamp) => {
+  const now = new Date()
+  const diff = now - timestamp
+  const minutes = Math.floor(diff / (1000 * 60))
+  const hours = Math.floor(diff / (1000 * 60 * 60))
+  const days = Math.floor(diff / (1000 * 60 * 60 * 24))
+
+  if (minutes < 60) {
+    return `${minutes}m ago`
+  } else if (hours < 24) {
+    return `${hours}h ago`
+  } else {
+    return `${days}d ago`
   }
 }
 
@@ -619,6 +503,11 @@ const createNewTask = () => {
   // TODO: Open task creation dialog
   console.log('Create new task')
 }
+
+onMounted(() => {
+  // Initialize current project if not set
+  projectsStore.initializeCurrentProject()
+})
 </script>
 
 <style scoped>
@@ -647,6 +536,7 @@ const createNewTask = () => {
   min-width: 140px;
   max-width: 160px;
   transition: transform 0.2s ease, box-shadow 0.2s ease;
+  cursor: pointer;
 }
 
 .task-mini-card:hover {
@@ -665,16 +555,6 @@ const createNewTask = () => {
 
 .activity-item {
   padding: 12px 16px;
-}
-
-.avatar-group {
-  display: flex;
-  margin-left: -8px;
-}
-
-.avatar-group .v-avatar {
-  margin-left: -4px;
-  border: 2px solid rgb(var(--v-theme-surface));
 }
 
 @media (max-width: 960px) {

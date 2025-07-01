@@ -41,6 +41,28 @@ export const useUIStore = defineStore('ui', () => {
     }
   }
 
+  const initializeFromStorage = () => {
+    if (typeof localStorage !== 'undefined') {
+      // Load theme from localStorage
+      const savedTheme = localStorage.getItem('kanban-theme')
+      if (savedTheme && ['light', 'dark'].includes(savedTheme)) {
+        theme.value = savedTheme
+      }
+
+      // Load locale from localStorage
+      const savedLocale = localStorage.getItem('kanban-locale')
+      if (savedLocale) {
+        locale.value = savedLocale
+      }
+
+      // Load sidebar state from localStorage
+      const savedSidebarState = localStorage.getItem('kanban-sidebar-collapsed')
+      if (savedSidebarState !== null) {
+        sidebarCollapsed.value = savedSidebarState === 'true'
+      }
+    }
+  }
+
   const showToast = ({ 
     message, 
     type = 'info', 
@@ -112,27 +134,6 @@ export const useUIStore = defineStore('ui', () => {
     })
   }
 
-  // Initialize from localStorage
-  const initializeFromStorage = () => {
-    if (typeof localStorage === 'undefined') return
-    
-    const savedTheme = localStorage.getItem('kanban-theme')
-    const savedLocale = localStorage.getItem('kanban-locale')
-    const savedSidebarState = localStorage.getItem('kanban-sidebar-collapsed')
-    
-    if (savedTheme) {
-      theme.value = savedTheme
-    }
-    
-    if (savedLocale) {
-      locale.value = savedLocale
-    }
-    
-    if (savedSidebarState !== null) {
-      sidebarCollapsed.value = JSON.parse(savedSidebarState)
-    }
-  }
-
   return {
     // State
     globalLoading,
@@ -140,20 +141,20 @@ export const useUIStore = defineStore('ui', () => {
     theme,
     locale,
     toasts,
-    
+
     // Actions
     setGlobalLoading,
     toggleSidebar,
     setSidebarCollapsed,
     setTheme,
     setLocale,
+    initializeFromStorage,
     showToast,
     removeToast,
     clearAllToasts,
     showSuccess,
     showError,
     showWarning,
-    showInfo,
-    initializeFromStorage
+    showInfo
   }
 })

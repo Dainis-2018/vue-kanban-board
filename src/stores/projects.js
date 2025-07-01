@@ -36,9 +36,41 @@ export const useProjectsStore = defineStore('projects', () => {
     teams.value.find(team => team.id === teamId)
   )
 
+  const getProjectById = computed(() => (projectId) => 
+    projects.value.find(project => project.id === projectId)
+  )
+
+  const activeProjects = computed(() => 
+    projects.value.filter(project => project.status === 'active')
+  )
+
+  const completedProjects = computed(() => 
+    projects.value.filter(project => project.status === 'completed')
+  )
+
   // Actions
   const setCurrentProject = (projectId) => {
     currentProjectId.value = projectId
+    // Save to localStorage if available
+    if (typeof localStorage !== 'undefined') {
+      localStorage.setItem('kanban-current-project', projectId)
+    }
+  }
+
+  const initializeCurrentProject = () => {
+    // Load current project from localStorage if available
+    if (typeof localStorage !== 'undefined') {
+      const savedProjectId = localStorage.getItem('kanban-current-project')
+      if (savedProjectId && projects.value.find(p => p.id === savedProjectId)) {
+        currentProjectId.value = savedProjectId
+        return
+      }
+    }
+    
+    // Fallback to first project
+    if (projects.value.length > 0) {
+      currentProjectId.value = projects.value[0].id
+    }
   }
 
   const createProject = async (projectData) => {
@@ -46,8 +78,11 @@ export const useProjectsStore = defineStore('projects', () => {
       loading.value = true
       const newProject = {
         id: `project-${Date.now()}`,
-        ...projectData,
-        status: 'active'
+        status: 'active',
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        teamIds: [],
+        ...projectData
       }
       projects.value.push(newProject)
       return newProject
@@ -64,8 +99,14 @@ export const useProjectsStore = defineStore('projects', () => {
       loading.value = true
       const index = projects.value.findIndex(p => p.id === projectId)
       if (index !== -1) {
-        projects.value[index] = { ...projects.value[index], ...updates }
+        projects.value[index] = { 
+          ...projects.value[index], 
+          ...updates,
+          updatedAt: new Date().toISOString()
+        }
+        return projects.value[index]
       }
+      throw new Error('Project not found')
     } catch (err) {
       error.value = err.message
       throw err
@@ -92,13 +133,37 @@ export const useProjectsStore = defineStore('projects', () => {
     }
   }
 
+  const duplicateProject = async (projectId) => {
+    try {
+      const originalProject = projects.value.find(p => p.id === projectId)
+      if (!originalProject) throw new Error('Project not found')
+
+      const duplicatedProject = {
+        ...originalProject,
+        id: `project-${Date.now()}`,
+        name: `${originalProject.name} (Copy)`,
+        status: 'active',
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      }
+
+      projects.value.push(duplicatedProject)
+      return duplicatedProject
+    } catch (err) {
+      error.value = err.message
+      throw err
+    }
+  }
+
+  // Team Management
   const createTeam = async (teamData) => {
     try {
       loading.value = true
       const newTeam = {
         id: `team-${Date.now()}`,
-        ...teamData,
-        members: []
+        members: [],
+        createdAt: new Date().toISOString(),
+        ...teamData
       }
       teams.value.push(newTeam)
       return newTeam
@@ -110,17 +175,241 @@ export const useProjectsStore = defineStore('projects', () => {
     }
   }
 
-  const addUserToTeam = async (teamId, userId) => {
+  const updateTeam = async (teamId, updates) => {
+    try {
+      loading.value = true
+      const index = teams.value.findIndex(t => t.id === teamId)
+      if (index !== -1) {
+        teams.value[index] = { 
+          ...teams.value[index], 
+          ...updates,
+          updatedAt: new Date().toISOString()
+        }
+        return teams.value[index]
+      }
+      throw new Error('Team not found')
+    } catch (err) {
+      error.value = err.message
+      throw err
+    } finally {
+      loading.value = false
+    }
+  }
+
+  const deleteTeam = async (teamId) => {
+    try {
+      loading.value = true
+      const index = teams.value.findIndex(t => t.id === teamId)
+      if (index !== -1) {
+        teams.value.splice(index, 1)
+      }
+      
+      // Remove team from all projects
+      projects.value.forEach(project => {
+        const teamIndex = project.teamIds.indexOf(teamId)
+        if (teamIndex !== -1) {
+          project.teamIds.splice(teamIndex, 1)
+        }
+      })
+    } catch (err) {
+      error.value = err.message
+      throw err
+    } finally {
+      loading.value = false
+    }
+  }
+
+  const addTeamMember = async (teamId, userId) => {
     try {
       const team = teams.value.find(t => t.id === teamId)
-      if (team && !team.members.includes(userId)) {
+      if (!team) throw new Error('Team not found')
+      
+      if (!team.members.includes(userId)) {
         team.members.push(userId)
+        team.updatedAt = new Date().toISOString()
       }
+      
+      return team
     } catch (err) {
       error.value = err.message
       throw err
     }
   }
+
+  const removeTeamMember = async (teamId, userId) => {
+    try {
+      const team = teams.value.find(t => t.id === teamId)
+      if (!team) throw new Error('Team not found')
+      
+      const memberIndex = team.members.indexOf(userId)
+      if (memberIndex !== -1) {
+        team.members.splice(memberIndex, 1)
+        team.updatedAt = new Date().toISOString()
+      }
+      
+      return team
+    } catch (err) {
+      error.value = err.message
+      throw err
+    }
+  }
+
+  // User Management
+  const createUser = async (userData) => {
+    try {
+      loading.value = true
+      const newUser = {
+        id: `user-${Date.now()}`,
+        avatar: `https://i.pravatar.cc/150?img=${Math.floor(Math.random() * 70) + 1}`,
+        role: 'Team Member',
+        createdAt: new Date().toISOString(),
+        ...userData
+      }
+      users.value.push(newUser)
+      return newUser
+    } catch (err) {
+      error.value = err.message
+      throw err
+    } finally {
+      loading.value = false
+    }
+  }
+
+  const updateUser = async (userId, updates) => {
+    try {
+      loading.value = true
+      const index = users.value.findIndex(u => u.id === userId)
+      if (index !== -1) {
+        users.value[index] = { 
+          ...users.value[index], 
+          ...updates,
+          updatedAt: new Date().toISOString()
+        }
+        return users.value[index]
+      }
+      throw new Error('User not found')
+    } catch (err) {
+      error.value = err.message
+      throw err
+    } finally {
+      loading.value = false
+    }
+  }
+
+  const deleteUser = async (userId) => {
+    try {
+      loading.value = true
+      const index = users.value.findIndex(u => u.id === userId)
+      if (index !== -1) {
+        users.value.splice(index, 1)
+      }
+      
+      // Remove user from all teams
+      teams.value.forEach(team => {
+        const memberIndex = team.members.indexOf(userId)
+        if (memberIndex !== -1) {
+          team.members.splice(memberIndex, 1)
+        }
+      })
+    } catch (err) {
+      error.value = err.message
+      throw err
+    } finally {
+      loading.value = false
+    }
+  }
+
+  // Project Team Assignment
+  const assignTeamToProject = async (projectId, teamId) => {
+    try {
+      const project = projects.value.find(p => p.id === projectId)
+      if (!project) throw new Error('Project not found')
+      
+      if (!project.teamIds.includes(teamId)) {
+        project.teamIds.push(teamId)
+        project.updatedAt = new Date().toISOString()
+      }
+      
+      return project
+    } catch (err) {
+      error.value = err.message
+      throw err
+    }
+  }
+
+  const removeTeamFromProject = async (projectId, teamId) => {
+    try {
+      const project = projects.value.find(p => p.id === projectId)
+      if (!project) throw new Error('Project not found')
+      
+      const teamIndex = project.teamIds.indexOf(teamId)
+      if (teamIndex !== -1) {
+        project.teamIds.splice(teamIndex, 1)
+        project.updatedAt = new Date().toISOString()
+      }
+      
+      return project
+    } catch (err) {
+      error.value = err.message
+      throw err
+    }
+  }
+
+  // Search and Filter
+  const searchProjects = (query) => {
+    const searchTerms = query.toLowerCase().split(' ')
+    return projects.value.filter(project => {
+      const searchableText = [
+        project.name,
+        project.description || ''
+      ].join(' ').toLowerCase()
+      
+      return searchTerms.every(term => searchableText.includes(term))
+    })
+  }
+
+  const filterProjects = (filters) => {
+    return projects.value.filter(project => {
+      // Filter by status
+      if (filters.status && project.status !== filters.status) {
+        return false
+      }
+      
+      // Filter by team
+      if (filters.teamId && !project.teamIds.includes(filters.teamId)) {
+        return false
+      }
+      
+      // Filter by owner
+      if (filters.ownerId && project.ownerId !== filters.ownerId) {
+        return false
+      }
+      
+      return true
+    })
+  }
+
+  // Statistics
+  const getProjectStats = computed(() => (projectId) => {
+    const project = projects.value.find(p => p.id === projectId)
+    if (!project) return null
+
+    const projectTeamMembers = teams.value
+      .filter(team => project.teamIds.includes(team.id))
+      .flatMap(team => team.members)
+    
+    const uniqueMembers = [...new Set(projectTeamMembers)]
+
+    return {
+      id: project.id,
+      name: project.name,
+      status: project.status,
+      teamCount: project.teamIds.length,
+      memberCount: uniqueMembers.length,
+      startDate: project.startDate,
+      endDate: project.endDate
+    }
+  })
 
   return {
     // State
@@ -130,20 +419,44 @@ export const useProjectsStore = defineStore('projects', () => {
     currentProjectId,
     loading,
     error,
-    
+
     // Getters
     currentProject,
     projectTeams,
     projectUsers,
     getUserById,
     getTeamById,
-    
-    // Actions
+    getProjectById,
+    activeProjects,
+    completedProjects,
+    getProjectStats,
+
+    // Project Actions
     setCurrentProject,
+    initializeCurrentProject,
     createProject,
     updateProject,
     deleteProject,
+    duplicateProject,
+
+    // Team Actions
     createTeam,
-    addUserToTeam
+    updateTeam,
+    deleteTeam,
+    addTeamMember,
+    removeTeamMember,
+
+    // User Actions
+    createUser,
+    updateUser,
+    deleteUser,
+
+    // Project Team Assignment
+    assignTeamToProject,
+    removeTeamFromProject,
+
+    // Search & Filter
+    searchProjects,
+    filterProjects
   }
 })

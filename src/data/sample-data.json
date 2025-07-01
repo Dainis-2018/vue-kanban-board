@@ -9,7 +9,9 @@
       "endDate": "2025-12-31",
       "color": "#1976D2",
       "teamIds": ["team-1", "team-2"],
-      "ownerId": "user-1"
+      "ownerId": "user-1",
+      "createdAt": "2025-01-01T00:00:00.000Z",
+      "updatedAt": "2025-01-15T10:30:00.000Z"
     },
     {
       "id": "project-2",
@@ -20,7 +22,9 @@
       "endDate": "2025-09-30",
       "color": "#388E3C",
       "teamIds": ["team-2", "team-3"],
-      "ownerId": "user-2"
+      "ownerId": "user-2",
+      "createdAt": "2025-02-15T00:00:00.000Z",
+      "updatedAt": "2025-02-20T14:20:00.000Z"
     }
   ],
   "teams": [
@@ -28,19 +32,22 @@
       "id": "team-1",
       "name": "Frontend Team",
       "color": "#FF5722",
-      "members": ["user-1", "user-3", "user-4"]
+      "members": ["user-1", "user-3", "user-4"],
+      "createdAt": "2024-12-01T00:00:00.000Z"
     },
     {
       "id": "team-2",
       "name": "Backend Team",
       "color": "#9C27B0",
-      "members": ["user-2", "user-5"]
+      "members": ["user-2", "user-5"],
+      "createdAt": "2024-12-01T00:00:00.000Z"
     },
     {
       "id": "team-3",
       "name": "Mobile Team",
       "color": "#FF9800",
-      "members": ["user-6", "user-7"]
+      "members": ["user-6", "user-7"],
+      "createdAt": "2024-12-15T00:00:00.000Z"
     }
   ],
   "users": [
@@ -49,90 +56,97 @@
       "name": "John Doe",
       "email": "john@example.com",
       "avatar": "https://i.pravatar.cc/150?img=1",
-      "role": "Project Manager"
+      "role": "Project Manager",
+      "createdAt": "2024-11-01T00:00:00.000Z"
     },
     {
       "id": "user-2",
       "name": "Jane Smith",
       "email": "jane@example.com",
       "avatar": "https://i.pravatar.cc/150?img=2",
-      "role": "Lead Developer"
+      "role": "Lead Developer",
+      "createdAt": "2024-11-01T00:00:00.000Z"
     },
     {
       "id": "user-3",
       "name": "Mike Johnson",
       "email": "mike@example.com",
       "avatar": "https://i.pravatar.cc/150?img=3",
-      "role": "Frontend Developer"
+      "role": "Frontend Developer",
+      "createdAt": "2024-11-05T00:00:00.000Z"
     },
     {
       "id": "user-4",
       "name": "Sarah Wilson",
       "email": "sarah@example.com",
       "avatar": "https://i.pravatar.cc/150?img=4",
-      "role": "UI/UX Designer"
+      "role": "UI/UX Designer",
+      "createdAt": "2024-11-10T00:00:00.000Z"
     },
     {
       "id": "user-5",
       "name": "David Brown",
       "email": "david@example.com",
       "avatar": "https://i.pravatar.cc/150?img=5",
-      "role": "Backend Developer"
+      "role": "Backend Developer",
+      "createdAt": "2024-11-15T00:00:00.000Z"
     },
     {
       "id": "user-6",
       "name": "Emily Davis",
       "email": "emily@example.com",
       "avatar": "https://i.pravatar.cc/150?img=6",
-      "role": "Mobile Developer"
+      "role": "Mobile Developer",
+      "createdAt": "2024-12-01T00:00:00.000Z"
     },
     {
       "id": "user-7",
-      "name": "Tom Anderson",
-      "email": "tom@example.com",
+      "name": "Alex Chen",
+      "email": "alex@example.com",
       "avatar": "https://i.pravatar.cc/150?img=7",
-      "role": "QA Engineer"
+      "role": "Mobile Developer",
+      "createdAt": "2024-12-01T00:00:00.000Z"
     }
   ],
   "kanbanColumns": [
     {
       "id": "backlog",
       "title": "Backlog",
-      "color": "#757575",
+      "color": "#9E9E9E",
+      "icon": "mdi-inbox",
       "order": 1,
-      "collapsed": false,
       "wipLimit": null
     },
     {
       "id": "todo",
       "title": "To Do",
       "color": "#2196F3",
+      "icon": "mdi-format-list-checks",
       "order": 2,
-      "collapsed": false,
-      "wipLimit": 5
+      "wipLimit": null
     },
     {
       "id": "in-progress",
       "title": "In Progress",
       "color": "#FF9800",
+      "icon": "mdi-progress-clock",
       "order": 3,
-      "collapsed": false,
-      "wipLimit": 3
+      "wipLimit": 5
     },
     {
       "id": "review",
       "title": "Review",
       "color": "#9C27B0",
+      "icon": "mdi-eye",
       "order": 4,
-      "collapsed": false,
-      "wipLimit": 2
+      "wipLimit": 3
     },
     {
       "id": "done",
       "title": "Done",
       "color": "#4CAF50",
+      "icon": "mdi-check-circle",
       "order": 5,
-      "collapsed": false,
       "wipLimit": null
     }
   ],
@@ -140,114 +154,214 @@
     {
       "id": "task-1",
       "title": "Setup Project Structure",
-      "description": "<p>Initialize the project with proper folder structure and dependencies</p>",
+      "description": "Initialize the Vue.js project with proper folder structure and dependencies",
       "projectId": "project-1",
       "columnId": "done",
-      "assigneeIds": ["user-1", "user-3"],
-      "teamId": "team-1",
       "priority": "high",
-      "storyPoints": 3,
+      "assigneeId": "user-1",
+      "dueDate": "2025-01-15",
       "tags": ["setup", "infrastructure"],
-      "dueDate": "2025-06-25",
-      "createdAt": "2025-06-01T10:00:00Z",
-      "updatedAt": "2025-06-15T14:30:00Z",
-      "swimlane": "feature"
+      "createdAt": "2025-01-01T09:00:00.000Z",
+      "updatedAt": "2025-01-10T16:30:00.000Z",
+      "order": 1
     },
     {
       "id": "task-2",
-      "title": "Design User Authentication",
-      "description": "<p>Create wireframes and mockups for login and registration pages</p>",
+      "title": "Design User Interface",
+      "description": "Create wireframes and mockups for the main user interface",
       "projectId": "project-1",
       "columnId": "in-progress",
-      "assigneeIds": ["user-4"],
-      "teamId": "team-1",
       "priority": "medium",
-      "storyPoints": 5,
-      "tags": ["design", "auth"],
-      "dueDate": "2025-06-28",
-      "createdAt": "2025-06-10T09:00:00Z",
-      "updatedAt": "2025-06-20T11:15:00Z",
-      "swimlane": "feature"
+      "assigneeId": "user-4",
+      "dueDate": "2025-02-01",
+      "tags": ["design", "ui", "mockups"],
+      "createdAt": "2025-01-05T10:00:00.000Z",
+      "updatedAt": "2025-01-20T14:15:00.000Z",
+      "order": 1
     },
     {
       "id": "task-3",
-      "title": "Implement API Authentication",
-      "description": "<p>Build JWT-based authentication system with refresh tokens</p>",
+      "title": "Implement Authentication",
+      "description": "Build user authentication system with login, register, and password reset",
       "projectId": "project-1",
       "columnId": "todo",
-      "assigneeIds": ["user-2", "user-5"],
-      "teamId": "team-2",
       "priority": "high",
-      "storyPoints": 8,
-      "tags": ["backend", "auth", "security"],
-      "dueDate": "2025-07-05",
-      "createdAt": "2025-06-12T14:00:00Z",
-      "updatedAt": "2025-06-18T16:45:00Z",
-      "swimlane": "feature"
+      "assigneeId": "user-2",
+      "dueDate": "2025-02-15",
+      "tags": ["auth", "security", "backend"],
+      "createdAt": "2025-01-08T11:30:00.000Z",
+      "updatedAt": "2025-01-18T09:45:00.000Z",
+      "order": 1
     },
     {
       "id": "task-4",
-      "title": "Fix Login Bug",
-      "description": "<p>Users are unable to login with special characters in password</p>",
+      "title": "Product Catalog API",
+      "description": "Develop REST API endpoints for product management",
       "projectId": "project-1",
-      "columnId": "review",
-      "assigneeIds": ["user-3"],
-      "teamId": "team-1",
-      "priority": "critical",
-      "storyPoints": 2,
-      "tags": ["bug", "auth"],
-      "dueDate": "2025-06-22",
-      "createdAt": "2025-06-19T08:30:00Z",
-      "updatedAt": "2025-06-20T10:20:00Z",
-      "swimlane": "bug"
+      "columnId": "todo",
+      "priority": "medium",
+      "assigneeId": "user-5",
+      "dueDate": "2025-03-01",
+      "tags": ["api", "products", "backend"],
+      "createdAt": "2025-01-10T13:20:00.000Z",
+      "updatedAt": "2025-01-22T11:10:00.000Z",
+      "order": 2
     },
     {
       "id": "task-5",
-      "title": "Mobile App Wireframes",
-      "description": "<p>Create detailed wireframes for all mobile app screens</p>",
+      "title": "Shopping Cart Component",
+      "description": "Create reusable shopping cart component with add/remove functionality",
+      "projectId": "project-1",
+      "columnId": "backlog",
+      "priority": "medium",
+      "assigneeId": "user-3",
+      "dueDate": "2025-03-15",
+      "tags": ["frontend", "component", "cart"],
+      "createdAt": "2025-01-12T15:45:00.000Z",
+      "updatedAt": "2025-01-25T10:30:00.000Z",
+      "order": 1
+    },
+    {
+      "id": "task-6",
+      "title": "Payment Integration",
+      "description": "Integrate Stripe payment gateway for secure transactions",
+      "projectId": "project-1",
+      "columnId": "backlog",
+      "priority": "critical",
+      "assigneeId": "user-2",
+      "dueDate": "2025-04-01",
+      "tags": ["payment", "stripe", "integration"],
+      "createdAt": "2025-01-15T08:15:00.000Z",
+      "updatedAt": "2025-01-28T16:20:00.000Z",
+      "order": 2
+    },
+    {
+      "id": "task-7",
+      "title": "Mobile App Setup",
+      "description": "Initialize React Native project structure",
+      "projectId": "project-2",
+      "columnId": "done",
+      "priority": "high",
+      "assigneeId": "user-6",
+      "dueDate": "2025-03-15",
+      "tags": ["mobile", "react-native", "setup"],
+      "createdAt": "2025-02-15T09:30:00.000Z",
+      "updatedAt": "2025-03-05T14:45:00.000Z",
+      "order": 1
+    },
+    {
+      "id": "task-8",
+      "title": "User Onboarding Flow",
+      "description": "Design and implement mobile app onboarding screens",
+      "projectId": "project-2",
+      "columnId": "review",
+      "priority": "medium",
+      "assigneeId": "user-7",
+      "dueDate": "2025-04-01",
+      "tags": ["mobile", "onboarding", "ux"],
+      "createdAt": "2025-03-01T11:00:00.000Z",
+      "updatedAt": "2025-03-20T13:30:00.000Z",
+      "order": 1
+    },
+    {
+      "id": "task-9",
+      "title": "Push Notifications",
+      "description": "Implement push notification system for mobile app",
+      "projectId": "project-2",
+      "columnId": "todo",
+      "priority": "low",
+      "assigneeId": "user-6",
+      "dueDate": "2025-05-01",
+      "tags": ["mobile", "notifications", "firebase"],
+      "createdAt": "2025-03-10T14:20:00.000Z",
+      "updatedAt": "2025-03-25T09:15:00.000Z",
+      "order": 1
+    },
+    {
+      "id": "task-10",
+      "title": "App Store Deployment",
+      "description": "Prepare and submit app to iOS App Store and Google Play Store",
       "projectId": "project-2",
       "columnId": "backlog",
-      "assigneeIds": ["user-6"],
-      "teamId": "team-3",
       "priority": "medium",
-      "storyPoints": 5,
-      "tags": ["mobile", "design"],
-      "dueDate": "2025-07-10",
-      "createdAt": "2025-06-15T13:00:00Z",
-      "updatedAt": "2025-06-15T13:00:00Z",
-      "swimlane": "feature"
+      "assigneeId": "user-7",
+      "dueDate": "2025-09-15",
+      "tags": ["mobile", "deployment", "app-store"],
+      "createdAt": "2025-03-15T16:45:00.000Z",
+      "updatedAt": "2025-03-28T12:00:00.000Z",
+      "order": 1
     }
   ],
   "roadmapItems": [
     {
-      "id": "roadmap-1",
-      "title": "Phase 1: Foundation",
+      "id": "milestone-1",
+      "title": "MVP Launch",
+      "description": "Launch minimum viable product with core features",
+      "type": "milestone",
       "projectId": "project-1",
       "start": "2025-01-01",
       "end": "2025-03-31",
-      "type": "milestone",
-      "content": "Project setup, basic architecture, and user authentication",
-      "taskIds": ["task-1", "task-2", "task-3"]
+      "status": "in-progress",
+      "progress": 60,
+      "taskIds": ["task-1", "task-2", "task-3"],
+      "dependencies": [],
+      "color": "#1976D2"
     },
     {
-      "id": "roadmap-2",
-      "title": "Phase 2: Core Features",
+      "id": "milestone-2",
+      "title": "Beta Release",
+      "description": "Release beta version for user testing",
+      "type": "milestone",
       "projectId": "project-1",
       "start": "2025-04-01",
-      "end": "2025-08-31",
-      "type": "milestone",
-      "content": "Product catalog, shopping cart, and payment integration",
-      "taskIds": []
+      "end": "2025-06-30",
+      "status": "planned",
+      "progress": 0,
+      "taskIds": ["task-4", "task-5"],
+      "dependencies": ["milestone-1"],
+      "color": "#388E3C"
     },
     {
-      "id": "roadmap-3",
-      "title": "Phase 3: Launch",
-      "projectId": "project-1",
-      "start": "2025-09-01",
-      "end": "2025-12-31",
+      "id": "milestone-3",
+      "title": "Production Launch",
+      "description": "Full production release with payment integration",
       "type": "milestone",
-      "content": "Testing, deployment, and post-launch support",
-      "taskIds": []
+      "projectId": "project-1",
+      "start": "2025-07-01",
+      "end": "2025-09-30",
+      "status": "planned",
+      "progress": 0,
+      "taskIds": ["task-6"],
+      "dependencies": ["milestone-2"],
+      "color": "#FF5722"
+    },
+    {
+      "id": "milestone-4",
+      "title": "Mobile App Alpha",
+      "description": "Alpha version of mobile application",
+      "type": "milestone",
+      "projectId": "project-2",
+      "start": "2025-03-01",
+      "end": "2025-05-31",
+      "status": "in-progress",
+      "progress": 45,
+      "taskIds": ["task-7", "task-8"],
+      "dependencies": [],
+      "color": "#FF9800"
+    },
+    {
+      "id": "milestone-5",
+      "title": "Mobile App Beta",
+      "description": "Beta version ready for store submission",
+      "type": "milestone",
+      "projectId": "project-2",
+      "start": "2025-06-01",
+      "end": "2025-08-31",
+      "status": "planned",
+      "progress": 0,
+      "taskIds": ["task-9", "task-10"],
+      "dependencies": ["milestone-4"],
+      "color": "#9C27B0"
     }
   ]
 }

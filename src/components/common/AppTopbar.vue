@@ -1,238 +1,221 @@
 <template>
-  <v-app-bar 
-    app 
-    height="64"
-    elevation="0"
+  <v-app-bar
+    elevation="1"
     color="surface"
-    class="topbar"
+    class="px-4"
   >
-    <!-- Menu Toggle (Mobile) -->
-    <v-app-bar-nav-icon
-      v-if="mobile"
+    <!-- Mobile Menu Toggle -->
+    <v-app-bar-nav-icon 
       @click="$emit('toggle-drawer')"
+      class="d-md-none"
     />
 
-    <!-- Page Title -->
-    <v-app-bar-title class="text-h6 font-weight-medium">
-      {{ pageTitle }}
-    </v-app-bar-title>
-
-    <!-- Breadcrumbs -->
-    <v-breadcrumbs
-      v-if="!mobile && breadcrumbs.length > 1"
-      :items="breadcrumbs"
-      class="pa-0 ml-4"
-      density="compact"
-    >
-      <template #divider>
-        <v-icon size="16">mdi-chevron-right</v-icon>
-      </template>
-      <template #item="{ item }">
-        <v-breadcrumbs-item
-          :to="item.disabled ? undefined : item.to"
-          :disabled="item.disabled"
-          class="text-body-2"
-        >
-          {{ item.title }}
-        </v-breadcrumbs-item>
-      </template>
-    </v-breadcrumbs>
+    <!-- Page Title & Breadcrumbs -->
+    <div class="d-flex flex-column align-start">
+      <h1 class="text-h6 font-weight-medium">
+        {{ pageTitle }}
+      </h1>
+      <v-breadcrumbs
+        v-if="breadcrumbs.length > 1"
+        :items="breadcrumbs"
+        density="compact"
+        class="pa-0"
+      >
+        <template #divider>
+          <v-icon>mdi-chevron-right</v-icon>
+        </template>
+      </v-breadcrumbs>
+    </div>
 
     <v-spacer />
 
-    <!-- Search -->
-    <v-text-field
-      v-model="searchQuery"
-      placeholder="Search tasks, projects..."
-      prepend-inner-icon="mdi-magnify"
-      variant="outlined"
-      density="compact"
-      hide-details
-      clearable
-      class="mr-4"
-      style="max-width: 300px;"
-      @keyup.enter="performSearch"
-    />
+    <!-- Quick Actions -->
+    <div class="d-flex align-center ga-2">
+      <!-- Global Search -->
+      <v-text-field
+        v-model="globalSearch"
+        placeholder="Search tasks, projects..."
+        variant="outlined"
+        density="compact"
+        hide-details
+        prepend-inner-icon="mdi-magnify"
+        style="max-width: 300px;"
+        class="d-none d-sm-flex"
+        @keyup.enter="performSearch"
+      />
 
-    <!-- Notifications -->
-    <v-menu offset-y>
-      <template #activator="{ props }">
-        <v-btn
-          v-bind="props"
-          icon
-          variant="text"
-          class="mr-2"
-        >
-          <v-badge
-            :content="notificationCount"
-            :model-value="notificationCount > 0"
-            color="error"
-            overlap
-          >
-            <v-icon>mdi-bell</v-icon>
-          </v-badge>
-        </v-btn>
-      </template>
-      
-      <v-card min-width="320" max-width="400">
-        <v-card-title class="d-flex align-center justify-space-between">
-          <span class="text-h6">Notifications</span>
+      <!-- Theme Toggle -->
+      <v-btn
+        icon
+        variant="text"
+        @click="toggleTheme"
+      >
+        <v-icon>{{ isDark ? 'mdi-weather-sunny' : 'mdi-weather-night' }}</v-icon>
+      </v-btn>
+
+      <!-- Notifications -->
+      <v-menu offset-y>
+        <template #activator="{ props }">
           <v-btn
+            v-bind="props"
             icon
             variant="text"
-            size="small"
-            @click="markAllAsRead"
           >
-            <v-icon>mdi-check-all</v-icon>
+            <v-badge
+              :content="notificationCount"
+              :model-value="notificationCount > 0"
+              color="error"
+            >
+              <v-icon>mdi-bell</v-icon>
+            </v-badge>
           </v-btn>
-        </v-card-title>
-        
-        <v-divider />
-        
-        <v-list v-if="notifications.length > 0" max-height="400" class="py-0">
-          <v-list-item
-            v-for="notification in notifications"
-            :key="notification.id"
-            :class="{ 'bg-blue-lighten-5': !notification.read }"
-            class="notification-item"
-            @click="markAsRead(notification.id)"
-          >
-            <template #prepend>
-              <v-avatar :color="notification.color" size="32">
-                <v-icon :icon="notification.icon" size="16" />
-              </v-avatar>
-            </template>
-            
-            <v-list-item-title class="text-body-2 font-weight-medium">
-              {{ notification.title }}
-            </v-list-item-title>
-            
-            <v-list-item-subtitle class="text-caption">
-              {{ notification.message }}
-            </v-list-item-subtitle>
-            
-            <template #append>
-              <v-list-item-action>
-                <span class="text-caption text-medium-emphasis">
-                  {{ formatTime(notification.timestamp) }}
-                </span>
-              </v-list-item-action>
-            </template>
-          </v-list-item>
-        </v-list>
-        
-        <v-card-text v-else class="text-center text-medium-emphasis">
-          <v-icon size="48" class="mb-2">mdi-bell-off</v-icon>
-          <p class="text-body-2">No new notifications</p>
-        </v-card-text>
-        
-        <v-divider v-if="notifications.length > 0" />
-        
-        <v-card-actions v-if="notifications.length > 0">
-          <v-btn
-            block
-            variant="text"
-            size="small"
-            @click="viewAllNotifications"
-          >
-            View All Notifications
-          </v-btn>
-        </v-card-actions>
-      </v-card>
-    </v-menu>
+        </template>
 
-    <!-- Theme Toggle -->
-    <v-btn
-      icon
-      variant="text"
-      class="mr-2"
-      @click="toggleTheme"
-    >
-      <v-icon>{{ isDark ? 'mdi-weather-sunny' : 'mdi-weather-night' }}</v-icon>
-    </v-btn>
+        <v-card min-width="320" max-width="400">
+          <v-card-title class="d-flex align-center justify-space-between">
+            <span>Notifications</span>
+            <v-btn
+              variant="text"
+              size="small"
+              @click="markAllAsRead"
+            >
+              Mark all read
+            </v-btn>
+          </v-card-title>
 
-    <!-- User Menu -->
-    <v-menu offset-y>
-      <template #activator="{ props }">
-        <v-btn
-          v-bind="props"
-          variant="text"
-          class="user-menu-btn"
-        >
-          <v-avatar size="32" class="mr-2">
-            <v-img
-              :src="currentUser.avatar"
-              :alt="currentUser.name"
-            />
-          </v-avatar>
-          <span v-if="!mobile" class="text-body-2 font-weight-medium">
-            {{ currentUser.name }}
-          </span>
-          <v-icon v-if="!mobile" class="ml-1">mdi-chevron-down</v-icon>
-        </v-btn>
-      </template>
-      
-      <v-card min-width="240">
-        <v-card-text class="pb-2">
-          <div class="d-flex align-center">
-            <v-avatar size="40" class="mr-3">
-              <v-img
-                :src="currentUser.avatar"
-                :alt="currentUser.name"
-              />
-            </v-avatar>
-            <div>
-              <p class="text-body-2 font-weight-medium mb-0">
-                {{ currentUser.name }}
-              </p>
-              <p class="text-caption text-medium-emphasis mb-0">
-                {{ currentUser.email }}
-              </p>
-              <v-chip
-                size="x-small"
-                color="primary"
-                variant="outlined"
-                class="mt-1"
+          <v-divider />
+
+          <v-list max-height="400" class="pa-0">
+            <template v-if="notifications.length > 0">
+              <v-list-item
+                v-for="notification in notifications.slice(0, 5)"
+                :key="notification.id"
+                :class="{ 'bg-primary-lighten-5': !notification.read }"
               >
-                {{ currentUser.role }}
-              </v-chip>
-            </div>
-          </div>
-        </v-card-text>
-        
-        <v-divider />
-        
-        <v-list nav density="compact">
-          <v-list-item
-            v-for="item in userMenuItems"
-            :key="item.title"
-            :prepend-icon="item.icon"
-            :title="item.title"
-            @click="item.action"
-          />
-        </v-list>
-        
-        <v-divider />
-        
-        <v-card-actions>
+                <template #prepend>
+                  <v-avatar
+                    size="32"
+                    :color="notification.color"
+                    variant="tonal"
+                  >
+                    <v-icon size="16">{{ notification.icon }}</v-icon>
+                  </v-avatar>
+                </template>
+
+                <v-list-item-title class="text-body-2 font-weight-medium">
+                  {{ notification.title }}
+                </v-list-item-title>
+                <v-list-item-subtitle class="text-caption">
+                  {{ notification.message }}
+                </v-list-item-subtitle>
+                <v-list-item-subtitle class="text-caption text-medium-emphasis">
+                  {{ formatTime(notification.timestamp) }}
+                </v-list-item-subtitle>
+
+                <template #append>
+                  <v-btn
+                    v-if="!notification.read"
+                    icon
+                    size="x-small"
+                    variant="text"
+                    @click="markAsRead(notification.id)"
+                  >
+                    <v-icon size="12">mdi-circle</v-icon>
+                  </v-btn>
+                </template>
+              </v-list-item>
+            </template>
+            <v-list-item v-else>
+              <v-list-item-title class="text-center text-medium-emphasis">
+                No notifications
+              </v-list-item-title>
+            </v-list-item>
+          </v-list>
+
+          <v-divider />
+
+          <v-card-actions>
+            <v-btn
+              variant="text"
+              block
+              size="small"
+              @click="viewAllNotifications"
+            >
+              View All Notifications
+            </v-btn>
+          </v-card-actions>
+        </v-card>
+      </v-menu>
+
+      <!-- User Menu -->
+      <v-menu offset-y>
+        <template #activator="{ props }">
           <v-btn
-            block
+            v-bind="props"
             variant="text"
-            prepend-icon="mdi-logout"
-            @click="logout"
+            class="pa-1"
           >
-            Sign Out
+            <v-avatar
+              size="32"
+              :image="currentUser.avatar"
+            >
+              {{ currentUser.name.charAt(0) }}
+            </v-avatar>
+            <v-icon class="ml-1">mdi-chevron-down</v-icon>
           </v-btn>
-        </v-card-actions>
-      </v-card>
-    </v-menu>
+        </template>
+
+        <v-card min-width="240">
+          <v-card-text class="pa-4">
+            <div class="d-flex align-center">
+              <v-avatar
+                size="40"
+                :image="currentUser.avatar"
+                class="mr-3"
+              >
+                {{ currentUser.name.charAt(0) }}
+              </v-avatar>
+              <div>
+                <div class="font-weight-medium">{{ currentUser.name }}</div>
+                <div class="text-caption text-medium-emphasis">{{ currentUser.email }}</div>
+                <v-chip size="x-small" color="primary" variant="tonal" class="mt-1">
+                  {{ currentUser.role }}
+                </v-chip>
+              </div>
+            </div>
+          </v-card-text>
+
+          <v-divider />
+
+          <v-list density="compact">
+            <v-list-item
+              v-for="item in userMenuItems"
+              :key="item.title"
+              :prepend-icon="item.icon"
+              :title="item.title"
+              @click="item.action"
+            />
+          </v-list>
+
+          <v-divider />
+
+          <v-list density="compact">
+            <v-list-item
+              prepend-icon="mdi-logout"
+              title="Sign Out"
+              @click="logout"
+            />
+          </v-list>
+        </v-card>
+      </v-menu>
+    </div>
   </v-app-bar>
 </template>
 
 <script setup>
 import { ref, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { useDisplay, useTheme } from 'vuetify'
+import { useTheme } from 'vuetify'
 import { useProjectsStore } from '@/stores/projects'
 
 // Emits
@@ -241,26 +224,27 @@ defineEmits(['toggle-drawer'])
 // Composables
 const route = useRoute()
 const router = useRouter()
-const { mobile } = useDisplay()
 const theme = useTheme()
 const projectsStore = useProjectsStore()
 
 // Local state
-const searchQuery = ref('')
+const globalSearch = ref('')
+
+// Mock notifications
 const notifications = ref([
   {
     id: 1,
-    title: 'Task Assigned',
-    message: 'You have been assigned to "Fix Login Bug"',
+    title: 'New Task Assigned',
+    message: 'You have been assigned to "Update User Interface"',
     icon: 'mdi-account-plus',
     color: 'primary',
-    timestamp: new Date(Date.now() - 1000 * 60 * 30), // 30 minutes ago
+    timestamp: new Date(Date.now() - 1000 * 60 * 15), // 15 minutes ago
     read: false
   },
   {
     id: 2,
-    title: 'Project Updated',
-    message: 'E-commerce Platform roadmap has been updated',
+    title: 'Project Update',
+    message: 'E-commerce Platform milestone completed',
     icon: 'mdi-update',
     color: 'info',
     timestamp: new Date(Date.now() - 1000 * 60 * 60 * 2), // 2 hours ago
@@ -359,9 +343,8 @@ const toggleTheme = () => {
 }
 
 const performSearch = () => {
-  if (searchQuery.value.trim()) {
-    // TODO: Implement search functionality
-    console.log('Searching for:', searchQuery.value)
+  if (globalSearch.value.trim()) {
+    router.push(`/search?q=${encodeURIComponent(globalSearch.value)}`)
   }
 }
 
@@ -382,13 +365,17 @@ const viewAllNotifications = () => {
   console.log('View all notifications')
 }
 
+const logout = () => {
+  console.log('Logout')
+}
+
 const formatTime = (timestamp) => {
   const now = new Date()
   const diff = now - timestamp
   const minutes = Math.floor(diff / (1000 * 60))
   const hours = Math.floor(diff / (1000 * 60 * 60))
   const days = Math.floor(diff / (1000 * 60 * 60 * 24))
-  
+
   if (minutes < 60) {
     return `${minutes}m ago`
   } else if (hours < 24) {
@@ -397,42 +384,14 @@ const formatTime = (timestamp) => {
     return `${days}d ago`
   }
 }
-
-const logout = () => {
-  // TODO: Implement logout functionality
-  console.log('Logout')
-}
 </script>
 
 <style scoped>
-.topbar {
-  border-bottom: 1px solid rgb(var(--v-theme-surface-variant));
-}
-
-.user-menu-btn {
-  text-transform: none;
-  height: auto;
-  padding: 4px 8px;
-}
-
-.notification-item {
-  cursor: pointer;
-  transition: background-color 0.2s ease;
-}
-
-.notification-item:hover {
-  background-color: rgb(var(--v-theme-surface-variant), 0.5);
-}
-
-:deep(.v-text-field .v-input__control) {
-  min-height: 40px;
-}
-
-:deep(.v-breadcrumbs-item) {
-  font-size: 0.875rem;
-}
-
 :deep(.v-breadcrumbs-item--disabled) {
   opacity: 0.6;
+}
+
+:deep(.v-text-field .v-field) {
+  box-shadow: none;
 }
 </style>

@@ -55,22 +55,19 @@ export const useTasksStore = defineStore('tasks', () => {
     })
   })
 
-  const getRoadmapByProject = computed(() => (projectId) => 
+  const getRoadmapByProject = computed(() => (projectId) =>
     roadmapItems.value.filter(item => item.projectId === projectId)
   )
 
-  // Actions
+  // Task Management Actions
   const createTask = async (taskData) => {
     try {
       loading.value = true
       const newTask = {
         id: `task-${Date.now()}`,
-        ...taskData,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
-        assigneeIds: taskData.assigneeIds || [],
-        tags: taskData.tags || [],
-        swimlane: taskData.swimlane || 'feature'
+        ...taskData
       }
       tasks.value.push(newTask)
       return newTask
@@ -120,57 +117,31 @@ export const useTasksStore = defineStore('tasks', () => {
 
   const moveTask = async (taskId, newColumnId, newIndex = null) => {
     try {
-      loading.value = true
-      const taskToMoveIndex = tasks.value.findIndex(t => t.id === taskId)
-      if (taskToMoveIndex === -1) throw new Error('Task not found')
+      const task = tasks.value.find(t => t.id === taskId)
+      if (!task) throw new Error('Task not found')
 
-      // Remove the task from the array to re-insert it later
-      const [taskToMove] = tasks.value.splice(taskToMoveIndex, 1)
+      task.columnId = newColumnId
+      task.updatedAt = new Date().toISOString()
 
-      // Update task properties
-      taskToMove.columnId = newColumnId
-      taskToMove.updatedAt = new Date().toISOString()
-
-      // Insert the task at the new index
+      // Handle position/order if needed
       if (newIndex !== null) {
-        // Get tasks in the destination column (now without the moved task)
-        const tasksInNewColumn = tasks.value.filter(t =>
-          t.projectId === taskToMove.projectId && t.columnId === newColumnId
-        )
-
-        if (newIndex < tasksInNewColumn.length) {
-          // Find the task that will be after our moved task
-          const taskAfter = tasksInNewColumn[newIndex]
-          // Find its index in the main tasks array
-          const insertionIndex = tasks.value.findIndex(t => t.id === taskAfter.id)
-          // Insert the task at this position
-          tasks.value.splice(insertionIndex, 0, taskToMove)
-        } else {
-          // If index is at the end or out of bounds, append to the end of the tasks list
-          tasks.value.push(taskToMove)
-        }
-      } else {
-        // If no index is provided, append to the end
-        tasks.value.push(taskToMove)
+        task.order = newIndex
       }
 
-      return taskToMove
+      return task
     } catch (err) {
       error.value = err.message
       throw err
-    } finally {
-      loading.value = false
     }
   }
 
-  const assignTask = async (taskId, userIds) => {
+  const assignTask = async (taskId, assigneeId) => {
     try {
       const task = tasks.value.find(t => t.id === taskId)
       if (!task) throw new Error('Task not found')
 
-      task.assigneeIds = Array.isArray(userIds) ? userIds : [userIds]
+      task.assigneeId = assigneeId
       task.updatedAt = new Date().toISOString()
-      
       return task
     } catch (err) {
       error.value = err.message
@@ -185,7 +156,6 @@ export const useTasksStore = defineStore('tasks', () => {
 
       task.priority = priority
       task.updatedAt = new Date().toISOString()
-      
       return task
     } catch (err) {
       error.value = err.message
@@ -211,7 +181,6 @@ export const useTasksStore = defineStore('tasks', () => {
 
       task.comments.push(newComment)
       task.updatedAt = new Date().toISOString()
-      
       return newComment
     } catch (err) {
       error.value = err.message
@@ -219,18 +188,23 @@ export const useTasksStore = defineStore('tasks', () => {
     }
   }
 
-  // Kanban Column Management
-  const updateColumnCollapse = (columnId, collapsed) => {
-    const column = kanbanColumns.value.find(col => col.id === columnId)
-    if (column) {
-      column.collapsed = collapsed
-    }
-  }
-
-  const updateColumnWipLimit = (columnId, wipLimit) => {
-    const column = kanbanColumns.value.find(col => col.id === columnId)
-    if (column) {
-      column.wipLimit = wipLimit > 0 ? wipLimit : null
+  // Column Management
+  const createColumn = async (columnData) => {
+    try {
+      loading.value = true
+      const newColumn = {
+        id: `column-${Date.now()}`,
+        order: kanbanColumns.value.length + 1,
+        wipLimit: null,
+        ...columnData
+      }
+      kanbanColumns.value.push(newColumn)
+      return newColumn
+    } catch (err) {
+      error.value = err.message
+      throw err
+    } finally {
+      loading.value = false
     }
   }
 
@@ -362,14 +336,70 @@ export const useTasksStore = defineStore('tasks', () => {
   const bulkDeleteTasks = async (taskIds) => {
     try {
       loading.value = true
-      const idsToDelete = new Set(taskIds)
-      tasks.value = tasks.value.filter(task => !idsToDelete.has(task.id))
+      taskIds.forEach(taskId => {
+        const index = tasks.value.findIndex(t => t.id === taskId)
+        if (index !== -1) {
+          tasks.value.splice(index, 1)
+        }
+      })
     } catch (err) {
       error.value = err.message
       throw err
     } finally {
       loading.value = false
     }
+  }
+
+  // Search and Filter
+  const searchTasks = (query, projectId = null) => {
+    const searchTerms = query.toLowerCase().split(' ')
+    return tasks.value.filter(task => {
+      if (projectId && task.projectId !== projectId) return false
+      
+      const searchableText = [
+        task.title,
+        task.description,
+        task.tags?.join(' ') || ''
+      ].join(' ').toLowerCase()
+      
+      return searchTerms.every(term => searchableText.includes(term))
+    })
+  }
+
+  const filterTasks = (filters, projectId = null) => {
+    return tasks.value.filter(task => {
+      if (projectId && task.projectId !== projectId) return false
+      
+      // Filter by assignee
+      if (filters.assignee?.length && !filters.assignee.includes(task.assigneeId)) {
+        return false
+      }
+      
+      // Filter by priority
+      if (filters.priority?.length && !filters.priority.includes(task.priority)) {
+        return false
+      }
+      
+      // Filter by tags
+      if (filters.tags?.length) {
+        const taskTags = task.tags || []
+        if (!filters.tags.some(tag => taskTags.includes(tag))) {
+          return false
+        }
+      }
+      
+      // Filter by due date
+      if (filters.dueDate) {
+        if (!task.dueDate) return false
+        const taskDue = new Date(task.dueDate)
+        const filterDue = new Date(filters.dueDate)
+        if (taskDue.toDateString() !== filterDue.toDateString()) {
+          return false
+        }
+      }
+      
+      return true
+    })
   }
 
   return {
@@ -379,7 +409,7 @@ export const useTasksStore = defineStore('tasks', () => {
     roadmapItems,
     loading,
     error,
-    
+
     // Getters
     getTasksByProject,
     getTasksByColumn,
@@ -389,7 +419,7 @@ export const useTasksStore = defineStore('tasks', () => {
     tasksByPriority,
     overdueTasks,
     getRoadmapByProject,
-    
+
     // Task Actions
     createTask,
     updateTask,
@@ -398,22 +428,25 @@ export const useTasksStore = defineStore('tasks', () => {
     assignTask,
     updateTaskPriority,
     addTaskComment,
-    
+
     // Column Actions
-    updateColumnCollapse,
-    updateColumnWipLimit,
+    createColumn,
     updateColumn,
     reorderColumns,
-    
+
     // Roadmap Actions
     createRoadmapItem,
     updateRoadmapItem,
     deleteRoadmapItem,
     linkTaskToRoadmap,
     unlinkTaskFromRoadmap,
-    
-    // Bulk Actions
+
+    // Bulk Operations
     bulkUpdateTasks,
-    bulkDeleteTasks
+    bulkDeleteTasks,
+
+    // Search & Filter
+    searchTasks,
+    filterTasks
   }
 })

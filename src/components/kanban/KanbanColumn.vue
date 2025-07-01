@@ -1,387 +1,159 @@
 <template>
-  <div 
-    class="kanban-column" 
-    :class="{ 
-      'kanban-column--collapsed': column.collapsed,
-      'kanban-column--over-limit': isOverWipLimit 
-    }"
-  >
-    <!-- Column Header -->
-    <div class="column-header" :style="{ borderTopColor: column.color }">
-      <div class="d-flex align-center justify-space-between pa-3">
-        <div class="d-flex align-center flex-grow-1">
-          <!-- Collapse/Expand Button -->
-          <v-btn
-            icon
-            variant="text"
-            size="small"
-            @click="toggleCollapse"
-            class="mr-2"
-          >
-            <v-icon>
-              {{ column.collapsed ? 'mdi-chevron-right' : 'mdi-chevron-down' }}
-            </v-icon>
-          </v-btn>
-          
-          <!-- Column Title -->
-          <div class="flex-grow-1" v-if="!column.collapsed">
-            <h3 class="text-subtitle-1 font-weight-bold mb-0">
-              {{ column.title }}
-            </h3>
-            <div class="d-flex align-center">
-              <span class="text-caption text-medium-emphasis">
-                {{ tasks.length }} {{ tasks.length === 1 ? 'task' : 'tasks' }}
-              </span>
-              
-              <!-- WIP Limit Warning -->
-              <v-chip
-                v-if="column.wipLimit && isOverWipLimit"
-                size="x-small"
-                color="error"
-                variant="flat"
-                class="ml-2"
-              >
-                Over Limit
-              </v-chip>
-              
-              <v-chip
-                v-else-if="column.wipLimit"
-                size="x-small"
-                :color="wipLimitColor"
-                variant="outlined"
-                class="ml-2"
-              >
-                {{ tasks.length }}/{{ column.wipLimit }}
-              </v-chip>
-            </div>
-          </div>
-          
-          <!-- Collapsed View -->
-          <div v-else class="text-center">
-            <div class="text-caption font-weight-bold">{{ column.title.charAt(0) }}</div>
-            <div class="text-caption">{{ tasks.length }}</div>
-          </div>
-        </div>
-        
-        <!-- Column Actions -->
-        <div v-if="!column.collapsed" class="column-actions ml-2">
-          <v-menu offset-y>
-            <template #activator="{ props }">
-              <v-btn
-                v-bind="props"
-                icon="mdi-dots-vertical"
-                variant="text"
-                size="small"
-              />
-            </template>
-            
-            <v-list density="compact">
-              <v-list-item
-                prepend-icon="mdi-plus"
-                title="Add Task"
-                @click="$emit('add-task', column.id)"
-              />
-              <v-list-item
-                prepend-icon="mdi-sort"
-                title="Sort Tasks"
-                @click="showSortMenu = true"
-              />
-              <v-divider />
-              <v-list-item
-                prepend-icon="mdi-cog"
-                title="Column Settings"
-                @click="showSettings = true"
-              />
-            </v-list>
-          </v-menu>
-        </div>
+  <v-card class="kanban-column" elevation="1">
+    <v-card-title class="d-flex align-center justify-space-between pa-4">
+      <div class="d-flex align-center">
+        <v-icon :color="column.color" class="mr-2">{{ column.icon }}</v-icon>
+        <span class="font-weight-medium">{{ column.title }}</span>
+        <v-chip size="small" variant="tonal" class="ml-2">
+          {{ tasks.length }}
+        </v-chip>
       </div>
-      
-      <!-- Add Task Button (when not collapsed) -->
-      <div v-if="!column.collapsed" class="px-3 pb-2">
-        <v-btn
-          variant="outlined"
-          size="small"
-          block
-          prepend-icon="mdi-plus"
-          @click="$emit('add-task', column.id)"
-          class="add-task-btn"
-        >
-          Add Task
-        </v-btn>
-      </div>
-    </div>
+      <v-btn icon size="small" variant="text">
+        <v-icon>mdi-dots-vertical</v-icon>
+      </v-btn>
+    </v-card-title>
 
-    <!-- Tasks Container -->
-    <div 
-      v-if="!column.collapsed" 
-      class="tasks-container" 
-    >
+    <v-divider />
+
+    <div class="pa-2" style="min-height: 400px;">
       <draggable
         v-model="localTasks"
-        group="kanban-tasks"
-        :animation="200"
-        ghost-class="task-ghost"
-        chosen-class="task-chosen"
-        drag-class="task-drag"
-        @start="onDragStart"
-        @end="onDragEnd"
-        @change="onTasksChanged"
+        group="tasks"
+        @change="onTaskMove"
         item-key="id"
-        class="tasks-list"
       >
-        <template #item="{ element: task, index }">
-          <KanbanCard
-            :key="task.id"
-            :task="task"
-            :index="index"
+        <template #item="{ element: task }">
+          <v-card
+            class="task-card mb-2"
+            elevation="1"
             @click="$emit('task-click', task)"
-            @quick-assign="handleQuickAssign"
-            @priority-change="handlePriorityChange"
-          />
-        </template>
-        
-        <template #header>
-          <!-- This empty div ensures draggable has a child element even when the list is empty, preventing a mount error. -->
-          <div v-if="localTasks.length === 0 && !isDragging" style="display: none;"></div>
-        </template>
-        
-        <template #footer>
-          <div class="drop-zone" v-if="isDragging">
-            <div class="drop-zone-content">
-              <v-icon>mdi-plus</v-icon>
-              <span>Drop task here</span>
-            </div>
-          </div>
+          >
+            <v-card-text class="pa-3">
+              <div class="d-flex align-center justify-space-between mb-2">
+                <v-chip
+                  size="x-small"
+                  :color="getPriorityColor(task.priority)"
+                  variant="flat"
+                >
+                  {{ task.priority }}
+                </v-chip>
+                <v-btn icon size="x-small" variant="text">
+                  <v-icon>mdi-dots-horizontal</v-icon>
+                </v-btn>
+              </div>
+              
+              <h4 class="text-body-2 font-weight-medium mb-2">
+                {{ task.title }}
+              </h4>
+              
+              <p class="text-caption text-medium-emphasis mb-2">
+                {{ task.description }}
+              </p>
+              
+              <div class="d-flex align-center justify-space-between">
+                <div class="d-flex align-center">
+                  <v-avatar
+                    v-if="task.assigneeId"
+                    size="20"
+                    :image="getAssigneeAvatar(task.assigneeId)"
+                  />
+                  <v-icon v-else size="20" color="grey">mdi-account-plus</v-icon>
+                </div>
+                
+                <div class="d-flex align-center ga-1">
+                  <v-icon v-if="task.dueDate" size="12" color="warning">
+                    mdi-clock
+                  </v-icon>
+                  <span v-if="task.dueDate" class="text-caption">
+                    {{ formatDate(task.dueDate) }}
+                  </span>
+                </div>
+              </div>
+            </v-card-text>
+          </v-card>
         </template>
       </draggable>
       
-      <!-- Empty State -->
-      <div v-if="tasks.length === 0 && !isDragging" class="empty-column">
-        <v-icon size="48" color="medium-emphasis" class="mb-2">
-          {{ getColumnIcon(column.id) }}
-        </v-icon>
-        <p class="text-caption text-medium-emphasis text-center">
-          No tasks in {{ column.title.toLowerCase() }}
-        </p>
-      </div>
+      <v-btn
+        variant="outlined"
+        block
+        class="mt-2"
+        @click="$emit('add-task', column.id)"
+      >
+        <v-icon class="mr-1">mdi-plus</v-icon>
+        Add Task
+      </v-btn>
     </div>
-  </div>
+  </v-card>
 </template>
 
 <script setup>
-import { ref, computed, watch } from 'vue'
-import { VueDraggable as draggable } from 'vue-draggable-plus'
-import KanbanCard from './KanbanCard.vue'
+import { computed } from 'vue'
+import { VueDraggableNext as draggable } from 'vue-draggable-next'
+import { useProjectsStore } from '@/stores/projects'
 
-// Props
 const props = defineProps({
-  column: {
-    type: Object,
-    required: true
-  },
-  tasks: {
-    type: Array,
-    default: () => []
-  },
-  projectId: {
-    type: String,
-    required: true
+  column: Object,
+  tasks: Array
+})
+
+const emit = defineEmits(['task-move', 'task-click', 'add-task'])
+
+const projectsStore = useProjectsStore()
+
+const localTasks = computed({
+  get: () => props.tasks,
+  set: (value) => {
+    // Handle reordering within column
   }
 })
 
-// Emits
-const emit = defineEmits([
-  'task-moved',
-  'task-click', 
-  'add-task',
-  'column-toggle'
-])
-
-// Local state
-const localTasks = ref([...props.tasks])
-const isDragging = ref(false)
-const showSettings = ref(false)
-const showSortMenu = ref(false)
-
-// Computed
-const isOverWipLimit = computed(() => 
-  props.column.wipLimit && props.tasks.length > props.column.wipLimit
-)
-
-const wipLimitColor = computed(() => {
-  if (!props.column.wipLimit) return 'grey'
-  const ratio = props.tasks.length / props.column.wipLimit
-  if (ratio >= 1) return 'error'
-  if (ratio >= 0.8) return 'warning'
-  return 'success'
-})
-
-// Methods
-const toggleCollapse = () => {
-  emit('column-toggle', props.column.id)
-}
-
-const onDragStart = (evt) => {
-  isDragging.value = true
-  evt.item.classList.add('dragging')
-}
-
-const onDragEnd = (evt) => {
-  isDragging.value = false
-  evt.item.classList.remove('dragging')
-}
-
-const onTasksChanged = (evt) => {
-  // Handle task reordering within column or moving between columns
-  if (evt.added) {
-    const { element: task, newIndex } = evt.added
-    emit('task-moved', task.id, props.column.id, newIndex)
-  } else if (evt.moved) {
-    const { element: task, newIndex } = evt.moved
-    emit('task-moved', task.id, props.column.id, newIndex)
+const onTaskMove = (event) => {
+  if (event.added) {
+    emit('task-move', {
+      taskId: event.added.element.id,
+      newColumnId: props.column.id,
+      newIndex: event.added.newIndex
+    })
   }
 }
 
-const handleQuickAssign = (taskId, userId) => {
-  // Emit event to parent to handle assignment
-  console.log('Quick assign:', taskId, userId)
-}
-
-const handlePriorityChange = (taskId, priority) => {
-  // Emit event to parent to handle priority change
-  console.log('Priority change:', taskId, priority)
-}
-
-const getColumnIcon = (columnId) => {
-  const icons = {
-    'backlog': 'mdi-inbox-outline',
-    'todo': 'mdi-format-list-checks',
-    'in-progress': 'mdi-clock-outline',
-    'review': 'mdi-eye-outline',
-    'done': 'mdi-check-circle-outline'
+const getPriorityColor = (priority) => {
+  const colors = {
+    critical: 'error',
+    high: 'warning', 
+    medium: 'info',
+    low: 'success'
   }
-  return icons[columnId] || 'mdi-circle-outline'
+  return colors[priority] || 'grey'
 }
 
-// Watch for prop changes
-watch(() => props.tasks, (newTasks) => {
-  localTasks.value = [...newTasks]
-}, { deep: true })
+const getAssigneeAvatar = (userId) => {
+  const user = projectsStore.getUserById(userId)
+  return user?.avatar || ''
+}
+
+const formatDate = (dateString) => {
+  return new Date(dateString).toLocaleDateString('en-US', {
+    month: 'short',
+    day: 'numeric'
+  })
+}
 </script>
 
 <style scoped>
 .kanban-column {
-  min-width: 280px;
-  max-width: 320px;
-  height: 100%;
-  background: rgb(var(--v-theme-surface));
-  border-radius: 12px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-  display: flex;
-  flex-direction: column;
-  transition: all 0.3s ease;
+  min-width: 300px;
+  max-width: 350px;
 }
 
-.kanban-column--collapsed {
-  min-width: 60px;
-  max-width: 60px;
-}
-
-.kanban-column--over-limit {
-  border: 2px solid rgb(var(--v-theme-error));
-}
-
-.column-header {
-  flex-shrink: 0;
-  border-top: 4px solid;
-  border-radius: 12px 12px 0 0;
-  background: rgba(var(--v-theme-surface-variant), 0.3);
-}
-
-.tasks-container {
-  flex-grow: 1;
-  overflow: hidden;
-  display: flex;
-  flex-direction: column;
-}
-
-.tasks-list {
-  flex-grow: 1;
-  overflow-y: auto;
-  padding: 8px;
-  min-height: 100px;
-}
-
-.empty-column {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: 24px;
-  height: 200px;
-}
-
-.drop-zone {
-  padding: 16px;
-  margin: 8px;
-  border: 2px dashed rgb(var(--v-theme-primary));
-  border-radius: 8px;
-  background: rgba(var(--v-theme-primary), 0.05);
-  transition: all 0.3s ease;
-}
-
-.drop-zone-content {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  color: rgb(var(--v-theme-primary));
-  font-size: 14px;
-}
-
-.add-task-btn {
+.task-card {
+  cursor: pointer;
   transition: all 0.2s ease;
 }
 
-.add-task-btn:hover {
-  background-color: rgba(var(--v-theme-primary), 0.1);
-  border-color: rgb(var(--v-theme-primary));
-}
-
-/* Drag & Drop Styles */
-.task-ghost {
-  opacity: 0.5;
-  transform: rotate(5deg);
-}
-
-.task-chosen {
-  transform: scale(1.02);
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
-}
-
-.task-drag {
-  transform: rotate(5deg);
-  z-index: 1000;
-}
-
-.column-actions {
-  opacity: 0;
-  transition: opacity 0.2s ease;
-}
-
-.kanban-column:hover .column-actions {
-  opacity: 1;
-}
-
-@media (max-width: 960px) {
-  .kanban-column {
-    min-width: 260px;
-    max-width: 280px;
-  }
-  
-  .kanban-column--collapsed {
-    min-width: 50px;
-    max-width: 50px;
-  }
+.task-card:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(0,0,0,0.1);
 }
 </style>
