@@ -53,17 +53,23 @@
               
               <div class="mb-3">
                 <span class="text-caption font-weight-bold">Assignees:</span>
-                <div class="mt-1">
-                  <v-avatar-group v-if="assignees.length > 0" max="3">
+                <div class="mt-1 d-flex align-center">
+                  <div v-if="assignees.length > 0" class="avatar-group">
                     <v-avatar
-                      v-for="user in assignees"
+                      v-for="user in assignees.slice(0, 3)"
                       :key="user.id"
                       size="24"
+                      class="avatar-group-item"
                     >
-                      <v-img :src="user.avatar" />
+                      <v-img :src="user.avatar" :alt="user.name" />
                     </v-avatar>
-                  </v-avatar-group>
-                  <span v-else class="text-medium-emphasis">Unassigned</span>
+                  </div>
+                  <span v-if="assignees.length > 3" class="text-caption ml-2">
+                    +{{ assignees.length - 3 }}
+                  </span>
+                  <span v-if="assignees.length === 0" class="text-medium-emphasis">
+                    Unassigned
+                  </span>
                 </div>
               </div>
               
@@ -176,5 +182,19 @@ const handleDelete = () => {
   background: rgba(var(--v-theme-surface-variant), 0.3);
   padding: 16px;
   border-radius: 8px;
+}
+
+.avatar-group {
+  display: flex;
+}
+
+.avatar-group-item {
+  margin-left: -8px;
+  border: 2px solid rgb(var(--v-theme-surface));
+  transition: transform 0.2s ease-in-out;
+}
+
+.avatar-group-item:first-child {
+  margin-left: 0;
 }
 </style>

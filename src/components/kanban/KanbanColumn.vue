@@ -115,8 +115,7 @@
     <!-- Tasks Container -->
     <div 
       v-if="!column.collapsed" 
-      class="tasks-container"
-      ref="tasksContainer"
+      class="tasks-container" 
     >
       <draggable
         v-model="localTasks"
@@ -140,6 +139,11 @@
             @quick-assign="handleQuickAssign"
             @priority-change="handlePriorityChange"
           />
+        </template>
+        
+        <template #header>
+          <!-- This empty div ensures draggable has a child element even when the list is empty, preventing a mount error. -->
+          <div v-if="localTasks.length === 0 && !isDragging" style="display: none;"></div>
         </template>
         
         <template #footer>
@@ -167,7 +171,7 @@
 
 <script setup>
 import { ref, computed, watch } from 'vue'
-import draggable from 'vuedraggable'
+import { VueDraggable as draggable } from 'vue-draggable-plus'
 import KanbanCard from './KanbanCard.vue'
 
 // Props
@@ -199,7 +203,6 @@ const localTasks = ref([...props.tasks])
 const isDragging = ref(false)
 const showSettings = ref(false)
 const showSortMenu = ref(false)
-const tasksContainer = ref(null)
 
 // Computed
 const isOverWipLimit = computed(() => 

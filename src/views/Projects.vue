@@ -75,7 +75,7 @@
     </v-card>
 
     <!-- Projects Grid/List -->
-    <div v-if="viewMode === 'grid'" class="projects-grid">
+    <div v-show="viewMode === 'grid'" class="projects-grid">
       <v-row>
         <v-col
           v-for="project in filteredProjects"
@@ -95,7 +95,7 @@
       </v-row>
     </div>
 
-    <div v-else class="projects-list">
+    <div v-show="viewMode === 'list'" class="projects-list">
       <v-card>
         <v-data-table
           ref="dataTable"
@@ -272,7 +272,7 @@
 </template>
 
 <script setup>
-import { ref, computed, watch, nextTick } from 'vue'
+import { ref, computed, watch, nextTick, onBeforeUnmount } from 'vue'
 import { useRouter } from 'vue-router'
 import { useProjectsStore } from '@/stores/projects'
 import { useTasksStore } from '@/stores/tasks'
@@ -359,13 +359,21 @@ const filteredProjects = computed(() => {
   return filtered
 })
 
-const draggableProjects = ref([])
-watch(filteredProjects, (newVal) => {
-  // When filters change, update the local list used for the table
-  draggableProjects.value = newVal.map(p => ({ ...p, drag: true }))
-}, {
-  immediate: true
+const draggableProjects = computed({
+  get: () => filteredProjects.value.map(p => ({ ...p, drag: true })),
+  set: (newOrder) => {
+    // If you need to persist the order, you can map the newOrder
+    // back to an array of IDs and call a store action here.
+    // For example:
+    // const newProjectOrder = newOrder.map(p => p.id);
+    // projectsStore.updateProjectOrder(newProjectOrder);
+  }
 })
+
+const draggableOptions = computed(() => ({
+  animation: 150,
+  handle: '.drag-handle'
+}))
 
 // Methods
 const getProjectProgress = (projectId) => {
@@ -469,6 +477,39 @@ const handleDelete = async () => {
     deleting.value = false
   }
 }
+
+// --- Drag and Drop Logic ---
+
+const initDraggable = () => {
+  // Ensure we run this after the DOM has been updated
+  nextTick(() => {
+    if (draggableInstance.value) return // Already initialized
+
+    const tbody = dataTable.value?.$el?.querySelector('tbody')
+    if (tbody) {
+      draggableInstance.value = useDraggable(tbody, draggableProjects, draggableOptions)
+    }
+  })
+}
+
+const destroyDraggable = () => {
+  if (draggableInstance.value) {
+    draggableInstance.value.destroy()
+    draggableInstance.value = null
+  }
+}
+
+// Watch for conditions to be right for initializing or destroying draggable
+watch([viewMode, filteredProjects], ([mode, projects]) => {
+  if (mode === 'list' && projects.length > 0) {
+    initDraggable()
+  } else {
+    destroyDraggable()
+  }
+})
+
+// Clean up on component unmount
+onBeforeUnmount(destroyDraggable)
 </script>
 
 <style scoped>

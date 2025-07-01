@@ -21,7 +21,7 @@
             variant="flat"
             class="task-id mr-2"
           >
-            {{ task.id.split('-')[1] }}
+            {{ (task.id || '').split('-').pop() }}
           </v-chip>
           
           <v-icon
@@ -142,12 +142,8 @@
     <div class="card-footer pa-3 pt-0">
       <div class="d-flex align-center justify-space-between">
         <!-- Assignees -->
-        <div class="assignees">
-          <v-avatar-group
-            v-if="assignees.length > 0"
-            :max="3"
-            size="28"
-          >
+        <div class="assignees d-flex align-center">
+          <div v-if="assignees.length > 0" class="avatar-group">
             <v-tooltip
               v-for="user in assignees.slice(0, 3)"
               :key="user.id"
@@ -156,19 +152,22 @@
               <template #activator="{ props }">
                 <v-avatar
                   v-bind="props"
-                  size="28"
+                  size="24"
                   @click.stop="openUserProfile(user)"
-                  class="cursor-pointer"
+                  class="avatar-group-item cursor-pointer"
                 >
                   <v-img :src="user.avatar" :alt="user.name" />
                 </v-avatar>
               </template>
               <span>{{ user.name }}</span>
             </v-tooltip>
-          </v-avatar-group>
+          </div>
+          <span v-if="assignees.length > 3" class="text-caption ml-2">
+            +{{ assignees.length - 3 }}
+          </span>
           
           <v-btn
-            v-else
+            v-if="assignees.length === 0"
             icon="mdi-account-plus"
             variant="outlined"
             size="small"
@@ -310,7 +309,7 @@ const showPriorityMenu = ref(false)
 
 // Computed
 const assignees = computed(() => 
-  props.task.assigneeIds
+  (props.task.assigneeIds || [])
     .map(id => projectsStore.getUserById(id))
     .filter(Boolean)
 )
@@ -577,15 +576,22 @@ const deleteTask = () => {
   color: rgb(var(--v-theme-on-surface-variant));
 }
 
-/* Avatar Group Styling */
-:deep(.v-avatar-group .v-avatar) {
+.avatar-group {
+  display: flex;
+}
+
+.avatar-group-item {
+  margin-left: -8px;
   border: 2px solid rgb(var(--v-theme-surface));
   transition: transform 0.2s ease;
 }
 
-:deep(.v-avatar-group .v-avatar:hover) {
+.avatar-group-item:hover {
   transform: scale(1.1);
   z-index: 2;
+}
+.avatar-group-item:first-child {
+  margin-left: 0;
 }
 
 /* Drag State */
