@@ -118,7 +118,7 @@
       class="tasks-container"
       ref="tasksContainer"
     >
-      <Draggable
+      <draggable
         v-model="localTasks"
         group="kanban-tasks"
         :animation="200"
@@ -150,7 +150,7 @@
             </div>
           </div>
         </template>
-      </Draggable>
+      </draggable>
       
       <!-- Empty State -->
       <div v-if="tasks.length === 0 && !isDragging" class="empty-column">
@@ -162,29 +162,13 @@
         </p>
       </div>
     </div>
-
-    <!-- Column Settings Dialog -->
-    <ColumnSettingsDialog
-      v-model="showSettings"
-      :column="column"
-      @update="handleColumnUpdate"
-    />
-
-    <!-- Sort Menu -->
-    <SortMenu
-      v-model="showSortMenu"
-      :tasks="tasks"
-      @sort="handleSort"
-    />
   </div>
 </template>
 
 <script setup>
 import { ref, computed, watch } from 'vue'
-import { VueDraggable as Draggable } from 'vue-draggable-plus'
+import draggable from 'vuedraggable'
 import KanbanCard from './KanbanCard.vue'
-//import ColumnSettingsDialog from './ColumnSettingsDialog.vue'
-//import SortMenu from './SortMenu.vue'
 
 // Props
 const props = defineProps({
@@ -266,22 +250,6 @@ const handlePriorityChange = (taskId, priority) => {
   console.log('Priority change:', taskId, priority)
 }
 
-const handleColumnUpdate = (updates) => {
-  // Emit to parent component
-  emit('column-update', props.column.id, updates)
-  showSettings.value = false
-}
-
-const handleSort = (sortedTasks) => {
-  localTasks.value = [...sortedTasks]
-  showSortMenu.value = false
-  
-  // Emit reorder events
-  sortedTasks.forEach((task, index) => {
-    emit('task-moved', task.id, props.column.id, index)
-  })
-}
-
 const getColumnIcon = (columnId) => {
   const icons = {
     'backlog': 'mdi-inbox-outline',
@@ -342,23 +310,6 @@ watch(() => props.tasks, (newTasks) => {
   min-height: 100px;
 }
 
-.tasks-list::-webkit-scrollbar {
-  width: 6px;
-}
-
-.tasks-list::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-.tasks-list::-webkit-scrollbar-thumb {
-  background: rgba(var(--v-theme-on-surface), 0.2);
-  border-radius: 3px;
-}
-
-.tasks-list::-webkit-scrollbar-thumb:hover {
-  background: rgba(var(--v-theme-on-surface), 0.3);
-}
-
 .empty-column {
   display: flex;
   flex-direction: column;
@@ -410,11 +361,6 @@ watch(() => props.tasks, (newTasks) => {
   z-index: 1000;
 }
 
-:deep(.sortable-ghost) {
-  opacity: 0.3;
-}
-
-/* Column Actions */
 .column-actions {
   opacity: 0;
   transition: opacity 0.2s ease;
@@ -424,7 +370,6 @@ watch(() => props.tasks, (newTasks) => {
   opacity: 1;
 }
 
-/* Responsive Design */
 @media (max-width: 960px) {
   .kanban-column {
     min-width: 260px;
@@ -434,13 +379,6 @@ watch(() => props.tasks, (newTasks) => {
   .kanban-column--collapsed {
     min-width: 50px;
     max-width: 50px;
-  }
-}
-
-@media (max-width: 600px) {
-  .kanban-column {
-    min-width: calc(100vw - 32px);
-    max-width: calc(100vw - 32px);
   }
 }
 </style>

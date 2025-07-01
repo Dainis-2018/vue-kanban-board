@@ -29,12 +29,12 @@ const routes = [
     name: 'Roadmap',
     component: () => import('@/views/Roadmap.vue'),
     meta: { title: 'Project Roadmap' }
-//  },
-//  {
-//    path: '/teams',
-//    name: 'Teams',
-//    component: () => import('@/views/Teams.vue'),
-//    meta: { title: 'Teams' }
+  },
+  {
+    path: '/teams',
+    name: 'Teams',
+    component: () => import('@/views/Teams.vue'),
+    meta: { title: 'Teams' }
   }
 ]
 

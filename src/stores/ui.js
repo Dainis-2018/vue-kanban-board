@@ -27,14 +27,18 @@ export const useUIStore = defineStore('ui', () => {
 
   const setTheme = (newTheme) => {
     theme.value = newTheme
-    // Save to localStorage
-    localStorage.setItem('kanban-theme', newTheme)
+    // Save to localStorage if available
+    if (typeof localStorage !== 'undefined') {
+      localStorage.setItem('kanban-theme', newTheme)
+    }
   }
 
   const setLocale = (newLocale) => {
     locale.value = newLocale
-    // Save to localStorage
-    localStorage.setItem('kanban-locale', newLocale)
+    // Save to localStorage if available
+    if (typeof localStorage !== 'undefined') {
+      localStorage.setItem('kanban-locale', newLocale)
+    }
   }
 
   const showToast = ({ 
@@ -110,6 +114,8 @@ export const useUIStore = defineStore('ui', () => {
 
   // Initialize from localStorage
   const initializeFromStorage = () => {
+    if (typeof localStorage === 'undefined') return
+    
     const savedTheme = localStorage.getItem('kanban-theme')
     const savedLocale = localStorage.getItem('kanban-locale')
     const savedSidebarState = localStorage.getItem('kanban-sidebar-collapsed')
