@@ -1,0 +1,253 @@
+{
+  "projects": [
+    {
+      "id": "project-1",
+      "name": "E-commerce Platform",
+      "description": "Building a modern e-commerce platform with Vue.js",
+      "status": "active",
+      "startDate": "2025-01-01",
+      "endDate": "2025-12-31",
+      "color": "#1976D2",
+      "teamIds": ["team-1", "team-2"],
+      "ownerId": "user-1"
+    },
+    {
+      "id": "project-2",
+      "name": "Mobile App Development",
+      "description": "Cross-platform mobile application",
+      "status": "active",
+      "startDate": "2025-03-01",
+      "endDate": "2025-09-30",
+      "color": "#388E3C",
+      "teamIds": ["team-2", "team-3"],
+      "ownerId": "user-2"
+    }
+  ],
+  "teams": [
+    {
+      "id": "team-1",
+      "name": "Frontend Team",
+      "color": "#FF5722",
+      "members": ["user-1", "user-3", "user-4"]
+    },
+    {
+      "id": "team-2",
+      "name": "Backend Team",
+      "color": "#9C27B0",
+      "members": ["user-2", "user-5"]
+    },
+    {
+      "id": "team-3",
+      "name": "Mobile Team",
+      "color": "#FF9800",
+      "members": ["user-6", "user-7"]
+    }
+  ],
+  "users": [
+    {
+      "id": "user-1",
+      "name": "John Doe",
+      "email": "john@example.com",
+      "avatar": "https://i.pravatar.cc/150?img=1",
+      "role": "Project Manager"
+    },
+    {
+      "id": "user-2",
+      "name": "Jane Smith",
+      "email": "jane@example.com",
+      "avatar": "https://i.pravatar.cc/150?img=2",
+      "role": "Lead Developer"
+    },
+    {
+      "id": "user-3",
+      "name": "Mike Johnson",
+      "email": "mike@example.com",
+      "avatar": "https://i.pravatar.cc/150?img=3",
+      "role": "Frontend Developer"
+    },
+    {
+      "id": "user-4",
+      "name": "Sarah Wilson",
+      "email": "sarah@example.com",
+      "avatar": "https://i.pravatar.cc/150?img=4",
+      "role": "UI/UX Designer"
+    },
+    {
+      "id": "user-5",
+      "name": "David Brown",
+      "email": "david@example.com",
+      "avatar": "https://i.pravatar.cc/150?img=5",
+      "role": "Backend Developer"
+    },
+    {
+      "id": "user-6",
+      "name": "Emily Davis",
+      "email": "emily@example.com",
+      "avatar": "https://i.pravatar.cc/150?img=6",
+      "role": "Mobile Developer"
+    },
+    {
+      "id": "user-7",
+      "name": "Tom Anderson",
+      "email": "tom@example.com",
+      "avatar": "https://i.pravatar.cc/150?img=7",
+      "role": "QA Engineer"
+    }
+  ],
+  "kanbanColumns": [
+    {
+      "id": "backlog",
+      "title": "Backlog",
+      "color": "#757575",
+      "order": 1,
+      "collapsed": false,
+      "wipLimit": null
+    },
+    {
+      "id": "todo",
+      "title": "To Do",
+      "color": "#2196F3",
+      "order": 2,
+      "collapsed": false,
+      "wipLimit": 5
+    },
+    {
+      "id": "in-progress",
+      "title": "In Progress",
+      "color": "#FF9800",
+      "order": 3,
+      "collapsed": false,
+      "wipLimit": 3
+    },
+    {
+      "id": "review",
+      "title": "Review",
+      "color": "#9C27B0",
+      "order": 4,
+      "collapsed": false,
+      "wipLimit": 2
+    },
+    {
+      "id": "done",
+      "title": "Done",
+      "color": "#4CAF50",
+      "order": 5,
+      "collapsed": false,
+      "wipLimit": null
+    }
+  ],
+  "tasks": [
+    {
+      "id": "task-1",
+      "title": "Setup Project Structure",
+      "description": "<p>Initialize the project with proper folder structure and dependencies</p>",
+      "projectId": "project-1",
+      "columnId": "done",
+      "assigneeIds": ["user-1", "user-3"],
+      "teamId": "team-1",
+      "priority": "high",
+      "storyPoints": 3,
+      "tags": ["setup", "infrastructure"],
+      "dueDate": "2025-06-25",
+      "createdAt": "2025-06-01T10:00:00Z",
+      "updatedAt": "2025-06-15T14:30:00Z",
+      "swimlane": "feature"
+    },
+    {
+      "id": "task-2",
+      "title": "Design User Authentication",
+      "description": "<p>Create wireframes and mockups for login and registration pages</p>",
+      "projectId": "project-1",
+      "columnId": "in-progress",
+      "assigneeIds": ["user-4"],
+      "teamId": "team-1",
+      "priority": "medium",
+      "storyPoints": 5,
+      "tags": ["design", "auth"],
+      "dueDate": "2025-06-28",
+      "createdAt": "2025-06-10T09:00:00Z",
+      "updatedAt": "2025-06-20T11:15:00Z",
+      "swimlane": "feature"
+    },
+    {
+      "id": "task-3",
+      "title": "Implement API Authentication",
+      "description": "<p>Build JWT-based authentication system with refresh tokens</p>",
+      "projectId": "project-1",
+      "columnId": "todo",
+      "assigneeIds": ["user-2", "user-5"],
+      "teamId": "team-2",
+      "priority": "high",
+      "storyPoints": 8,
+      "tags": ["backend", "auth", "security"],
+      "dueDate": "2025-07-05",
+      "createdAt": "2025-06-12T14:00:00Z",
+      "updatedAt": "2025-06-18T16:45:00Z",
+      "swimlane": "feature"
+    },
+    {
+      "id": "task-4",
+      "title": "Fix Login Bug",
+      "description": "<p>Users are unable to login with special characters in password</p>",
+      "projectId": "project-1",
+      "columnId": "review",
+      "assigneeIds": ["user-3"],
+      "teamId": "team-1",
+      "priority": "critical",
+      "storyPoints": 2,
+      "tags": ["bug", "auth"],
+      "dueDate": "2025-06-22",
+      "createdAt": "2025-06-19T08:30:00Z",
+      "updatedAt": "2025-06-20T10:20:00Z",
+      "swimlane": "bug"
+    },
+    {
+      "id": "task-5",
+      "title": "Mobile App Wireframes",
+      "description": "<p>Create detailed wireframes for all mobile app screens</p>",
+      "projectId": "project-2",
+      "columnId": "backlog",
+      "assigneeIds": ["user-6"],
+      "teamId": "team-3",
+      "priority": "medium",
+      "storyPoints": 5,
+      "tags": ["mobile", "design"],
+      "dueDate": "2025-07-10",
+      "createdAt": "2025-06-15T13:00:00Z",
+      "updatedAt": "2025-06-15T13:00:00Z",
+      "swimlane": "feature"
+    }
+  ],
+  "roadmapItems": [
+    {
+      "id": "roadmap-1",
+      "title": "Phase 1: Foundation",
+      "projectId": "project-1",
+      "start": "2025-01-01",
+      "end": "2025-03-31",
+      "type": "milestone",
+      "content": "Project setup, basic architecture, and user authentication",
+      "taskIds": ["task-1", "task-2", "task-3"]
+    },
+    {
+      "id": "roadmap-2",
+      "title": "Phase 2: Core Features",
+      "projectId": "project-1",
+      "start": "2025-04-01",
+      "end": "2025-08-31",
+      "type": "milestone",
+      "content": "Product catalog, shopping cart, and payment integration",
+      "taskIds": []
+    },
+    {
+      "id": "roadmap-3",
+      "title": "Phase 3: Launch",
+      "projectId": "project-1",
+      "start": "2025-09-01",
+      "end": "2025-12-31",
+      "type": "milestone",
+      "content": "Testing, deployment, and post-launch support",
+      "taskIds": []
+    }
+  ]
+}
