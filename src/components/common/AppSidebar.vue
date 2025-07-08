@@ -105,8 +105,9 @@
         :key="item.title"
         :to="item.to"
         :prepend-icon="item.icon"
-        :title="item.title"
+        :title="rail ? null : item.title"
         :value="item.title"
+        :disabled="item.disabled"
         color="primary"
         class="mx-2 mb-1"
         rounded="lg"
@@ -347,34 +348,39 @@ const projectItems = computed(() =>
   }))
 )
 
-const navigationItems = computed(() => [
-  {
-    title: 'Dashboard',
-    icon: 'mdi-view-dashboard',
-    to: '/dashboard'
-  },
-  {
-    title: 'Projects',
-    icon: 'mdi-folder-multiple',
-    to: '/projects'
-  },
-  {
-    title: 'Kanban Board',
-    icon: 'mdi-view-column',
-    to: `/kanban/${currentProject.value?.id || ''}`,
-    badge: pendingTasksCount.value > 0 ? pendingTasksCount.value : null
-  },
-  {
-    title: 'Roadmap',
-    icon: 'mdi-map',
-    to: `/roadmap/${currentProject.value?.id || ''}`
-  },
-  {
-    title: 'Teams',
-    icon: 'mdi-account-group',
-    to: '/teams'
-  }
-])
+const navigationItems = computed(() => {
+  const projectId = currentProject.value?.id
+  return [
+    {
+      title: 'Dashboard',
+      icon: 'mdi-view-dashboard',
+      to: '/dashboard'
+    },
+    {
+      title: 'Projects',
+      icon: 'mdi-folder-multiple',
+      to: '/projects'
+    },
+    {
+      title: 'Kanban Board',
+      icon: 'mdi-view-column',
+      to: projectId ? `/kanban/${projectId}` : undefined,
+      disabled: !projectId,
+      badge: pendingTasksCount.value > 0 ? pendingTasksCount.value : null
+    },
+    {
+      title: 'Roadmap',
+      icon: 'mdi-map',
+      to: projectId ? `/roadmap/${projectId}` : undefined,
+      disabled: !projectId
+    },
+    {
+      title: 'Teams',
+      icon: 'mdi-account-group',
+      to: '/teams'
+    }
+  ]
+})
 
 // Methods
 const toggleRail = () => {
