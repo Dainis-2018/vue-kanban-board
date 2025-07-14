@@ -10,9 +10,12 @@
           item-key="id"
           handle=".drag-handle"
           tag="div"
+          ghost-class="drag-ghost"
+          chosen-class="drag-chosen"
+          drag-class="drag-dragging"
         >
           <template #item="{ element: column }">
-            <v-list-item class="px-0">
+            <v-list-item class="px-0 mb-1">
               <template #prepend>
                 <v-icon class="drag-handle mr-2" style="cursor: move">
                   mdi-drag-horizontal
@@ -91,6 +94,30 @@ const draggableColumns = computed({
 })
 
 const toggleColumn = (columnId) => {
-  emit('update-column', columnId, { collapsed: !props.columns.find(c => c.id === columnId)?.collapsed })
+  const column = props.columns.find(c => c.id === columnId)
+  emit('update-column', columnId, { collapsed: !column?.collapsed })
 }
 </script>
+
+<style scoped>
+.drag-ghost {
+  opacity: 0.5;
+}
+
+.drag-chosen {
+  transform: scale(1.02);
+}
+
+.drag-dragging {
+  transform: rotate(5deg);
+}
+
+.v-list-item {
+  border-radius: 8px;
+  transition: all 0.2s ease;
+}
+
+.v-list-item:hover {
+  background-color: rgba(var(--v-theme-primary), 0.05);
+}
+</style>

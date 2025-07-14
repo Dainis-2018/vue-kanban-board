@@ -32,7 +32,7 @@
           </v-col>
           <v-col cols="12" md="4" class="text-center">
             <v-img
-              src="https://via.placeholder.com/300x200/1976D2/ffffff?text=Dashboard"
+              src="https://placehold.co/300x200/1976D2/ffffff?text=Dashboard"
               max-width="300"
               class="mx-auto"
             />

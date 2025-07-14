@@ -4,16 +4,17 @@ import sampleData from '@/data/sample-data.json'
 
 export const useTasksStore = defineStore('tasks', () => {
   // State
-  const tasks = ref(sampleData.tasks)
-  const kanbanColumns = ref(sampleData.kanbanColumns)
-  const roadmapItems = ref(sampleData.roadmapItems)
+  const tasks = ref([...sampleData.tasks])
+  const kanbanColumns = ref([...sampleData.kanbanColumns])
+  const roadmapItems = ref([...sampleData.roadmapItems])
   const loading = ref(false)
   const error = ref(null)
 
   // Getters
-  const getTasksByProject = computed(() => (projectId) => 
-    tasks.value.filter(task => task.projectId === projectId)
-  )
+  const getTasksByProject = computed(() => (projectId) => {
+    if (!projectId) return []
+    return tasks.value.filter(task => task.projectId === projectId)
+  })
 
   const getTasksByColumn = computed(() => (projectId, columnId) => 
     tasks.value.filter(task => 
@@ -67,6 +68,13 @@ export const useTasksStore = defineStore('tasks', () => {
         id: `task-${Date.now()}`,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
+        priority: 'medium',
+        columnId: 'todo',
+        tags: [],
+        commentsCount: 0,
+        attachmentsCount: 0,
+        subtasksCount: 0,
+        completedSubtasks: 0,
         ...taskData
       }
       tasks.value.push(newTask)
@@ -106,7 +114,9 @@ export const useTasksStore = defineStore('tasks', () => {
       const index = tasks.value.findIndex(task => task.id === taskId)
       if (index !== -1) {
         tasks.value.splice(index, 1)
+        return true
       }
+      throw new Error('Task not found')
     } catch (err) {
       error.value = err.message
       throw err
@@ -115,19 +125,18 @@ export const useTasksStore = defineStore('tasks', () => {
     }
   }
 
-  const moveTask = async (taskId, newColumnId, newIndex = null) => {
+  const moveTask = async (taskId, newColumnId, newIndex) => {
     try {
       const task = tasks.value.find(t => t.id === taskId)
       if (!task) throw new Error('Task not found')
-
+      
+      // Update task column
       task.columnId = newColumnId
       task.updatedAt = new Date().toISOString()
-
-      // Handle position/order if needed
-      if (newIndex !== null) {
-        task.order = newIndex
-      }
-
+      
+      // If you need to handle ordering within columns, you can implement that here
+      // For now, we just update the column
+      
       return task
     } catch (err) {
       error.value = err.message
@@ -139,9 +148,10 @@ export const useTasksStore = defineStore('tasks', () => {
     try {
       const task = tasks.value.find(t => t.id === taskId)
       if (!task) throw new Error('Task not found')
-
+      
       task.assigneeId = assigneeId
       task.updatedAt = new Date().toISOString()
+      
       return task
     } catch (err) {
       error.value = err.message
@@ -153,9 +163,10 @@ export const useTasksStore = defineStore('tasks', () => {
     try {
       const task = tasks.value.find(t => t.id === taskId)
       if (!task) throw new Error('Task not found')
-
+      
       task.priority = priority
       task.updatedAt = new Date().toISOString()
+      
       return task
     } catch (err) {
       error.value = err.message
@@ -167,7 +178,7 @@ export const useTasksStore = defineStore('tasks', () => {
     try {
       const task = tasks.value.find(t => t.id === taskId)
       if (!task) throw new Error('Task not found')
-
+      
       if (!task.comments) {
         task.comments = []
       }
@@ -180,6 +191,7 @@ export const useTasksStore = defineStore('tasks', () => {
       }
 
       task.comments.push(newComment)
+      task.commentsCount = (task.commentsCount || 0) + 1
       task.updatedAt = new Date().toISOString()
       return newComment
     } catch (err) {
@@ -196,6 +208,8 @@ export const useTasksStore = defineStore('tasks', () => {
         id: `column-${Date.now()}`,
         order: kanbanColumns.value.length + 1,
         wipLimit: null,
+        collapsed: false,
+        hidden: false,
         ...columnData
       }
       kanbanColumns.value.push(newColumn)
@@ -212,7 +226,18 @@ export const useTasksStore = defineStore('tasks', () => {
     const column = kanbanColumns.value.find(col => col.id === columnId)
     if (column) {
       Object.assign(column, updates)
+      return column
     }
+    throw new Error('Column not found')
+  }
+
+  const updateColumnCollapse = (columnId, collapsed) => {
+    const column = kanbanColumns.value.find(col => col.id === columnId)
+    if (column) {
+      column.collapsed = collapsed
+      return column
+    }
+    throw new Error('Column not found')
   }
 
   const reorderColumns = (newOrder) => {
@@ -233,8 +258,10 @@ export const useTasksStore = defineStore('tasks', () => {
       loading.value = true
       const newItem = {
         id: `roadmap-${Date.now()}`,
-        ...itemData,
-        taskIds: itemData.taskIds || []
+        taskIds: [],
+        progress: 0,
+        status: 'planned',
+        ...itemData
       }
       roadmapItems.value.push(newItem)
       return newItem
@@ -272,7 +299,9 @@ export const useTasksStore = defineStore('tasks', () => {
       const index = roadmapItems.value.findIndex(item => item.id === itemId)
       if (index !== -1) {
         roadmapItems.value.splice(index, 1)
+        return true
       }
+      throw new Error('Roadmap item not found')
     } catch (err) {
       error.value = err.message
       throw err
@@ -281,29 +310,33 @@ export const useTasksStore = defineStore('tasks', () => {
     }
   }
 
-  const linkTaskToRoadmap = async (taskId, roadmapItemId) => {
+  const linkTaskToRoadmap = async (roadmapId, taskId) => {
     try {
-      const roadmapItem = roadmapItems.value.find(item => item.id === roadmapItemId)
+      const roadmapItem = roadmapItems.value.find(item => item.id === roadmapId)
       if (!roadmapItem) throw new Error('Roadmap item not found')
-
+      
       if (!roadmapItem.taskIds.includes(taskId)) {
         roadmapItem.taskIds.push(taskId)
       }
+      
+      return roadmapItem
     } catch (err) {
       error.value = err.message
       throw err
     }
   }
 
-  const unlinkTaskFromRoadmap = async (taskId, roadmapItemId) => {
+  const unlinkTaskFromRoadmap = async (roadmapId, taskId) => {
     try {
-      const roadmapItem = roadmapItems.value.find(item => item.id === roadmapItemId)
+      const roadmapItem = roadmapItems.value.find(item => item.id === roadmapId)
       if (!roadmapItem) throw new Error('Roadmap item not found')
-
+      
       const index = roadmapItem.taskIds.indexOf(taskId)
-      if (index !== -1) {
+      if (index > -1) {
         roadmapItem.taskIds.splice(index, 1)
       }
+      
+      return roadmapItem
     } catch (err) {
       error.value = err.message
       throw err
@@ -319,7 +352,9 @@ export const useTasksStore = defineStore('tasks', () => {
       taskIds.forEach(taskId => {
         const task = tasks.value.find(t => t.id === taskId)
         if (task) {
-          Object.assign(task, updates, { updatedAt: new Date().toISOString() })
+          Object.assign(task, updates, {
+            updatedAt: new Date().toISOString()
+          })
           updatedTasks.push(task)
         }
       })
@@ -337,11 +372,12 @@ export const useTasksStore = defineStore('tasks', () => {
     try {
       loading.value = true
       taskIds.forEach(taskId => {
-        const index = tasks.value.findIndex(t => t.id === taskId)
+        const index = tasks.value.findIndex(task => task.id === taskId)
         if (index !== -1) {
           tasks.value.splice(index, 1)
         }
       })
+      return true
     } catch (err) {
       error.value = err.message
       throw err
@@ -350,7 +386,7 @@ export const useTasksStore = defineStore('tasks', () => {
     }
   }
 
-  // Search and Filter
+  // Search & Filter
   const searchTasks = (query, projectId = null) => {
     const searchTerms = query.toLowerCase().split(' ')
     return tasks.value.filter(task => {
@@ -358,8 +394,8 @@ export const useTasksStore = defineStore('tasks', () => {
       
       const searchableText = [
         task.title,
-        task.description,
-        task.tags?.join(' ') || ''
+        task.description || '',
+        (task.tags || []).join(' ')
       ].join(' ').toLowerCase()
       
       return searchTerms.every(term => searchableText.includes(term))
@@ -402,6 +438,19 @@ export const useTasksStore = defineStore('tasks', () => {
     })
   }
 
+  // Initialize with sample data if empty
+  const initializeData = () => {
+    if (tasks.value.length === 0) {
+      tasks.value = [...sampleData.tasks]
+    }
+    if (kanbanColumns.value.length === 0) {
+      kanbanColumns.value = [...sampleData.kanbanColumns]
+    }
+    if (roadmapItems.value.length === 0) {
+      roadmapItems.value = [...sampleData.roadmapItems]
+    }
+  }
+
   return {
     // State
     tasks,
@@ -432,6 +481,7 @@ export const useTasksStore = defineStore('tasks', () => {
     // Column Actions
     createColumn,
     updateColumn,
+    updateColumnCollapse,
     reorderColumns,
 
     // Roadmap Actions
@@ -447,6 +497,9 @@ export const useTasksStore = defineStore('tasks', () => {
 
     // Search & Filter
     searchTasks,
-    filterTasks
+    filterTasks,
+
+    // Utility
+    initializeData
   }
 })

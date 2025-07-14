@@ -29,178 +29,231 @@
         
         <v-col cols="12" md="6" class="text-md-right">
           <div class="d-flex align-center justify-end flex-wrap ga-2">
-            <!-- View Controls -->
-            <v-btn-toggle
-              v-model="viewOptions.showSwimlanes"
-              variant="outlined"
-              size="small"
-            >
-              <v-btn :value="false" prepend-icon="mdi-view-column">
-                Columns
-              </v-btn>
-              <v-btn :value="true" prepend-icon="mdi-view-stream">
-                Swimlanes
-              </v-btn>
-            </v-btn-toggle>
-            
-            <!-- Filters -->
-            <v-menu offset-y>
-              <template #activator="{ props }">
-                <v-btn
-                  v-bind="props"
-                  variant="outlined"
-                  size="small"
-                  prepend-icon="mdi-filter"
-                  :color="hasActiveFilters ? 'primary' : ''"
-                >
-                  Filter
-                  <v-badge
-                    v-if="activeFilterCount > 0"
-                    :content="activeFilterCount"
-                    color="primary"
-                    inline
-                    class="ml-1"
-                  />
-                </v-btn>
-              </template>
-              
-              <FilterPanel
-                v-model:assignee="filters.assignee"
-                v-model:priority="filters.priority"
-                v-model:tags="filters.tags"
-                v-model:dueDate="filters.dueDate"
-                :project-users="projectUsers"
-                @clear="clearFilters"
-              />
-            </v-menu>
-            
-            <!-- Quick Add -->
+            <!-- Simple Add Task Button -->
             <v-btn
               color="primary"
-              size="small"
               prepend-icon="mdi-plus"
-              @click="showQuickAdd = true"
+              size="small"
+              @click="handleAddTask(null)"
             >
               Add Task
             </v-btn>
-            
-            <!-- Board Settings -->
-            <v-menu offset-y>
-              <template #activator="{ props }">
-                <v-btn
-                  v-bind="props"
-                  icon="mdi-cog"
-                  variant="text"
-                  size="small"
-                />
-              </template>
-              
-              <BoardSettings
-                :columns="kanbanColumns"
-                @update-column="updateColumn"
-                @reorder-columns="reorderColumns"
-              />
-            </v-menu>
           </div>
+        </v-col>
+      </v-row>
+      
+      <!-- Search -->
+      <v-row>
+        <v-col cols="12" md="6">
+          <v-text-field
+            v-model="searchQuery"
+            placeholder="Search tasks..."
+            prepend-inner-icon="mdi-magnify"
+            variant="outlined"
+            density="compact"
+            hide-details
+            clearable
+            class="search-field"
+          />
         </v-col>
       </v-row>
     </div>
 
-    <!-- Search Bar -->
-    <v-card class="mb-4" v-if="!viewOptions.showSwimlanes">
-      <v-card-text class="py-3">
-        <v-text-field
-          v-model="searchQuery"
-          placeholder="Search tasks..."
-          prepend-inner-icon="mdi-magnify"
-          variant="outlined"
-          density="compact"
-          hide-details
-          clearable
-          class="search-field"
-        />
-      </v-card-text>
-    </v-card>
-
     <!-- Kanban Board Container -->
-    <div class="kanban-container" :class="{ 'with-swimlanes': viewOptions.showSwimlanes }">
-      <!-- Column Headers (when not using swimlanes) -->
-      <div v-if="!viewOptions.showSwimlanes" class="kanban-board">
-        <KanbanColumn
+    <div class="kanban-container">
+      <!-- Column View with Simple Cards -->
+      <div class="kanban-board">
+        <div
           v-for="column in visibleColumns"
           :key="column.id"
-          :column="column"
-          :tasks="getColumnTasks(column.id)"
-          :project-id="currentProjectId"
-          @task-moved="handleTaskMoved"
-          @task-click="openTaskDetails"
-          @add-task="openTaskForm"
-          @column-toggle="toggleColumnCollapse"
-        />
+          class="kanban-column"
+        >
+          <!-- Column Header -->
+          <v-card elevation="2" class="column-card">
+            <v-card-title class="d-flex align-center justify-space-between pa-3">
+              <div class="d-flex align-center">
+                <v-icon :color="column.color" class="mr-2">
+                  {{ column.icon }}
+                </v-icon>
+                <span class="text-subtitle-1 font-weight-bold">
+                  {{ column.title }}
+                </span>
+                <v-chip
+                  size="small"
+                  variant="outlined"
+                  class="ml-2"
+                >
+                  {{ (tasksByColumn.get(column.id) || []).length }}
+                </v-chip>
+              </div>
+            </v-card-title>
+            
+            <v-divider />
+
+            <!-- Tasks Container -->
+            <div class="tasks-container pa-2">
+              <!-- Task List -->
+              <div class="tasks-list">
+                <!-- Draggable Task List -->
+                <draggable
+                  :list="tasksByColumn.get(column.id) || []"
+                  :key="column.id"
+                  group="tasks"
+                  item-key="id"
+                  class="task-dropzone"
+                  ghost-class="task-ghost"
+                  chosen-class="task-chosen"
+                  drag-class="task-drag"
+                  :animation="200"
+                  @change="(event) => handleTaskChange(event, column.id)"
+                >
+                  <template #item="{ element: task }">
+                    <v-card
+                      class="task-card mb-2"
+                      elevation="1"
+                      @click="openTaskDetails(task)"
+                    >
+                      <v-card-text class="pa-3">
+                        <!-- Task Header -->
+                        <div class="d-flex align-center justify-space-between mb-2">
+                          <v-chip
+                            :color="getPriorityColor(task.priority)"
+                            size="x-small"
+                            variant="flat"
+                          >
+                            {{ task.priority }}
+                          </v-chip>
+                        </div>
+
+                        <!-- Task Title -->
+                        <h4 class="text-subtitle-2 font-weight-bold mb-2">
+                          {{ task.title }}
+                        </h4>
+
+                        <!-- Task Description -->
+                        <p 
+                          v-if="task.description"
+                          class="text-body-2 text-medium-emphasis mb-2"
+                        >
+                          {{ task.description.length > 100 ? 
+                            task.description.substring(0, 100) + '...' : 
+                            task.description 
+                          }}
+                        </p>
+
+                        <!-- Task Tags -->
+                        <div v-if="task.tags && task.tags.length > 0" class="mb-2">
+                          <v-chip
+                            v-for="tag in task.tags.slice(0, 3)"
+                            :key="tag"
+                            size="x-small"
+                            variant="outlined"
+                            class="mr-1 mb-1"
+                          >
+                            {{ tag }}
+                          </v-chip>
+                        </div>
+
+                        <!-- Task Footer -->
+                        <div class="d-flex align-center justify-space-between">
+                          <!-- Due Date -->
+                          <div v-if="task.dueDate" class="d-flex align-center">
+                            <v-icon 
+                              size="16" 
+                              :color="isOverdue(task.dueDate) ? 'error' : 'grey'"
+                              class="mr-1"
+                            >
+                              mdi-calendar
+                            </v-icon>
+                            <span 
+                              class="text-caption"
+                              :class="isOverdue(task.dueDate) ? 'text-error' : ''"
+                            >
+                              {{ formatDate(task.dueDate) }}
+                            </span>
+                          </div>
+                          
+                          <!-- Assignee -->
+                          <v-avatar
+                            v-if="task.assigneeId"
+                            size="24"
+                          >
+                            <span class="text-caption">
+                              {{ getAssigneeName(task.assigneeId)?.charAt(0) }}
+                            </span>
+                          </v-avatar>
+                        </div>
+                      </v-card-text>
+                    </v-card>
+                  </template>
+                  <template #footer>
+                    <div v-if="(tasksByColumn.get(column.id) || []).length === 0" class="empty-column">
+                      <div class="empty-content">
+                        <v-icon size="48" color="grey-lighten-2" class="mb-2">
+                          mdi-clipboard-text-outline
+                        </v-icon>
+                        <p class="text-body-2 text-medium-emphasis mb-3">
+                          No tasks in {{ column.title.toLowerCase() }}
+                        </p>
+                      </div>
+                    </div>
+                  </template>
+                </draggable>
+              </div>
+
+              <!-- Add Task Button -->
+              <div class="add-task-section">
+                <v-btn
+                  variant="outlined"
+                  block
+                  size="small"
+                  prepend-icon="mdi-plus"
+                  class="add-task-btn"
+                  @click="handleAddTask(column.id)"
+                >
+                  Add Task
+                </v-btn>
+              </div>
+            </div>
+          </v-card>
+        </div>
       </div>
-      
-      <!-- Swimlane View -->
-      <KanbanSwimlanes
-        v-else
-        :columns="visibleColumns"
-        :tasks="filteredTasks"
-        :project-id="currentProjectId"
-        :search-query="searchQuery"
-        @task-moved="handleTaskMoved"
-        @task-click="openTaskDetails"
-        @add-task="openTaskForm"
-      />
     </div>
 
-    <!-- Quick Add Task Dialog -->
+    <!-- Empty State for No Tasks -->
+    <v-card v-if="allTasks.length === 0" class="text-center pa-8 ma-4">
+      <v-icon size="64" color="grey-lighten-2" class="mb-4">
+        mdi-clipboard-text-outline
+      </v-icon>
+      <h3 class="text-h6 mb-2">No tasks found</h3>
+      <p class="text-body-2 text-medium-emphasis mb-4">
+        Get started by creating your first task.
+      </p>
+      <v-btn
+        color="primary"
+        prepend-icon="mdi-plus"
+        @click="handleAddTask(null)"
+      >
+        Create First Task
+      </v-btn>
+    </v-card>
+
+    <!-- Simple Task Creation Dialog -->
     <QuickTaskDialog
       v-model="showQuickAdd"
       :project-id="currentProjectId"
-      :default-column="'todo'"
-      @task-created="handleTaskCreated"
+      :columns="kanbanColumns"
+      :users="projectUsers"
+      :default-column-id="quickAddDefaultColumnId"
     />
 
     <!-- Task Details Dialog -->
     <TaskDetailsDialog
       v-model="showTaskDetails"
       :task="selectedTask"
-      @task-updated="handleTaskUpdated"
-      @task-deleted="handleTaskDeleted"
+      :project-users="projectUsers"
+      :columns="kanbanColumns"
     />
-
-    <!-- Loading Overlay -->
-    <v-overlay
-      v-model="loading"
-      class="align-center justify-center"
-      contained
-    >
-      <v-progress-circular
-        color="primary"
-        indeterminate
-        size="64"
-      />
-    </v-overlay>
-
-    <!-- Empty State -->
-    <v-card
-      v-if="!loading && filteredTasks.length === 0"
-      class="text-center pa-8 mt-8"
-    >
-      <v-icon size="64" color="medium-emphasis" class="mb-4">
-        mdi-clipboard-text-outline
-      </v-icon>
-      <h3 class="text-h6 mb-2">No Tasks Found</h3>
-      <p class="text-body-2 text-medium-emphasis mb-4">
-        {{ hasActiveFilters ? 'Try adjusting your filters or search terms.' : 'Get started by creating your first task.' }}
-      </p>
-      <v-btn
-        color="primary"
-        prepend-icon="mdi-plus"
-        @click="showQuickAdd = true"
-      >
-        Create First Task
-      </v-btn>
-    </v-card>
   </div>
 </template>
 
@@ -210,10 +263,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { useProjectsStore } from '@/stores/projects'
 import { useTasksStore } from '@/stores/tasks'
 import { useUIStore } from '@/stores/ui'
-import KanbanColumn from '@/components/kanban/KanbanColumn.vue'
-import KanbanSwimlanes from '@/components/kanban/KanbanSwimlanes.vue'
-import FilterPanel from '@/components/kanban/FilterPanel.vue'
-import BoardSettings from '@/components/kanban/BoardSettings.vue'
+import draggable from 'vuedraggable'
 import QuickTaskDialog from '@/components/task/QuickTaskDialog.vue'
 import TaskDetailsDialog from '@/components/task/TaskDetailsDialog.vue'
 
@@ -230,186 +280,149 @@ const searchQuery = ref('')
 const showQuickAdd = ref(false)
 const showTaskDetails = ref(false)
 const selectedTask = ref(null)
-
-const viewOptions = ref({
-  showSwimlanes: false,
-  compactMode: false
-})
-
-const filters = ref({
-  assignee: [],
-  priority: [],
-  tags: [],
-  dueDate: null
-})
+const quickAddDefaultColumnId = ref(null)
 
 // Store getters
 const currentProject = computed(() => projectsStore.currentProject)
 const currentProjectId = computed(() => projectsStore.currentProjectId)
 const projectUsers = computed(() => projectsStore.projectUsers)
-const kanbanColumns = computed(() => tasksStore.kanbanColumns)
-const allTasks = computed(() => tasksStore.getTasksByProject(currentProjectId.value))
+const kanbanColumns = computed(() => tasksStore.kanbanColumns || [])
+const allTasks = computed(() => {
+  const projectId = currentProjectId.value
+  if (!projectId) return []
+  return tasksStore.getTasksByProject(projectId) || []
+})
 
-// Computed
+// Computed properties
 const visibleColumns = computed(() => 
   kanbanColumns.value
-    .filter(col => !col.hidden)
+    .filter(col => !col.collapsed)
     .sort((a, b) => a.order - b.order)
-)
-
-const activeTasks = computed(() => 
-  allTasks.value.filter(task => task.columnId !== 'done' && task.columnId !== 'cancelled')
-)
-
-const completedTasks = computed(() => 
-  allTasks.value.filter(task => task.columnId === 'done')
 )
 
 const filteredTasks = computed(() => {
   let tasks = allTasks.value
 
-  // Search filter
+  // Apply search filter
   if (searchQuery.value) {
     const query = searchQuery.value.toLowerCase()
     tasks = tasks.filter(task =>
       task.title.toLowerCase().includes(query) ||
-      task.description.toLowerCase().includes(query) ||
-      task.tags.some(tag => tag.toLowerCase().includes(query))
+      task.description?.toLowerCase().includes(query) ||
+      task.tags?.some(tag => tag.toLowerCase().includes(query))
     )
-  }
-
-  // Assignee filter
-  if (filters.value.assignee.length > 0) {
-    tasks = tasks.filter(task =>
-      task.assigneeIds.some(id => filters.value.assignee.includes(id))
-    )
-  }
-
-  // Priority filter
-  if (filters.value.priority.length > 0) {
-    tasks = tasks.filter(task =>
-      filters.value.priority.includes(task.priority)
-    )
-  }
-
-  // Tags filter
-  if (filters.value.tags.length > 0) {
-    tasks = tasks.filter(task =>
-      task.tags.some(tag => filters.value.tags.includes(tag))
-    )
-  }
-
-  // Due date filter
-  if (filters.value.dueDate) {
-    const now = new Date()
-    const filterDate = new Date(filters.value.dueDate)
-    
-    tasks = tasks.filter(task => {
-      if (!task.dueDate) return false
-      const taskDue = new Date(task.dueDate)
-      return taskDue <= filterDate
-    })
   }
 
   return tasks
 })
 
-const hasActiveFilters = computed(() => 
-  filters.value.assignee.length > 0 ||
-  filters.value.priority.length > 0 ||
-  filters.value.tags.length > 0 ||
-  filters.value.dueDate ||
-  searchQuery.value
+const activeTasks = computed(() => 
+  filteredTasks.value.filter(task => task.columnId !== 'done')
 )
 
-const activeFilterCount = computed(() => {
-  let count = 0
-  if (filters.value.assignee.length > 0) count++
-  if (filters.value.priority.length > 0) count++
-  if (filters.value.tags.length > 0) count++
-  if (filters.value.dueDate) count++
-  if (searchQuery.value) count++
-  return count
-})
+const completedTasks = computed(() => 
+  filteredTasks.value.filter(task => task.columnId === 'done')
+)
+
+const columnOptions = computed(() =>
+  kanbanColumns.value.map(column => ({
+    title: column.title,
+    value: column.id
+  }))
+)
 
 // Methods
-const getColumnTasks = (columnId) => {
-  return filteredTasks.value.filter(task => task.columnId === columnId)
-}
+const tasksByColumn = computed(() => {
+  const map = new Map()
+  // Initialize map with all visible columns to ensure reactivity
+  visibleColumns.value.forEach(column => {
+    map.set(column.id, [])
+  })
 
-const handleTaskMoved = async (taskId, newColumnId, newIndex) => {
-  try {
-    loading.value = true
-    await tasksStore.moveTask(taskId, newColumnId, newIndex)
-    uiStore.showSuccess('Task moved successfully')
-  } catch (error) {
-    uiStore.showError('Failed to move task: ' + error.message)
-  } finally {
-    loading.value = false
-  }
-}
+  // Distribute filtered tasks into columns
+  filteredTasks.value.forEach(task => {
+    if (map.has(task.columnId)) {
+      map.get(task.columnId).push(task)
+    }
+  })
+
+  // Sort tasks within each column
+  map.forEach((tasks) => {
+    tasks.sort((a, b) => (a.order || 0) - (b.order || 0))
+  })
+
+  return map
+})
+
 
 const openTaskDetails = (task) => {
   selectedTask.value = task
   showTaskDetails.value = true
 }
 
-const openTaskForm = (columnId) => {
-  // Set default column for new task
+const handleAddTask = (columnId) => {
+  quickAddDefaultColumnId.value = columnId
   showQuickAdd.value = true
 }
 
-const handleTaskCreated = (task) => {
-  uiStore.showSuccess('Task created successfully')
-  showQuickAdd.value = false
-}
-
-const handleTaskUpdated = (task) => {
-  uiStore.showSuccess('Task updated successfully')
-  showTaskDetails.value = false
-  selectedTask.value = null
-}
-
-const handleTaskDeleted = (taskId) => {
-  uiStore.showSuccess('Task deleted successfully')
-  showTaskDetails.value = false
-  selectedTask.value = null
-}
-
-const toggleColumnCollapse = async (columnId) => {
-  const column = kanbanColumns.value.find(col => col.id === columnId)
-  if (column) {
-    tasksStore.updateColumnCollapse(columnId, !column.collapsed)
+const handleTaskChange = async (event, columnId) => {
+  // Handle task added to this column (from another column)
+  if (event.added) {
+    const { element: task, newIndex } = event.added
+    await handleTaskMove(task.id, columnId, newIndex)
+  }
+  
+  // Handle task reordered within the same column
+  if (event.moved) {
+    const { element: task, newIndex } = event.moved
+    await handleTaskReorder(task.id, newIndex)
   }
 }
 
-const updateColumn = async (columnId, updates) => {
+const handleTaskMove = async (taskId, newColumnId, newIndex = 0) => {
   try {
-    // Update column properties like WIP limits, colors, etc.
-    await tasksStore.updateColumn(columnId, updates)
-    uiStore.showSuccess('Column updated successfully')
+    await tasksStore.moveTask(taskId, newColumnId, newIndex)
+    uiStore.showSuccess('Task moved successfully')
   } catch (error) {
-    uiStore.showError('Failed to update column: ' + error.message)
+    uiStore.showError('Failed to move task: ' + error.message)
   }
 }
 
-const reorderColumns = async (newOrder) => {
+const handleTaskReorder = async (taskId, newIndex) => {
   try {
-    await tasksStore.reorderColumns(newOrder)
-    uiStore.showSuccess('Columns reordered successfully')
+    await tasksStore.reorderTask(taskId, newIndex)
   } catch (error) {
-    uiStore.showError('Failed to reorder columns: ' + error.message)
+    uiStore.showError('Failed to reorder task: ' + error.message)
   }
 }
 
-const clearFilters = () => {
-  filters.value = {
-    assignee: [],
-    priority: [],
-    tags: [],
-    dueDate: null
+// Helper methods
+const getPriorityColor = (priority) => {
+  const colors = {
+    critical: 'error',
+    high: 'warning',
+    medium: 'info',
+    low: 'success'
   }
-  searchQuery.value = ''
+  return colors[priority] || 'grey'
+}
+
+const getAssigneeName = (userId) => {
+  const user = projectsStore.getUserById(userId)
+  return user?.name || 'Unknown User'
+}
+
+const formatDate = (dateString) => {
+  if (!dateString) return ''
+  return new Date(dateString).toLocaleDateString('en-US', {
+    month: 'short',
+    day: 'numeric'
+  })
+}
+
+const isOverdue = (dueDate) => {
+  if (!dueDate) return false
+  return new Date(dueDate) < new Date()
 }
 
 // Initialize project from route
@@ -423,6 +436,10 @@ const initializeProject = () => {
 // Lifecycle
 onMounted(() => {
   initializeProject()
+  // Initialize stores if needed
+  if (!projectsStore.currentProjectId) {
+    projectsStore.initializeCurrentProject()
+  }
 })
 
 // Watchers
@@ -431,51 +448,143 @@ watch(() => route.params.projectId, (newProjectId) => {
     projectsStore.setCurrentProject(newProjectId)
   }
 })
-
-// Handle task query parameter for direct links
-watch(() => route.query.task, (taskId) => {
-  if (taskId) {
-    const task = tasksStore.getTaskById(taskId)
-    if (task) {
-      openTaskDetails(task)
-    }
-  }
-}, { immediate: true })
 </script>
 
 <style scoped>
 .kanban-view {
   height: 100%;
+  display: flex;
+  flex-direction: column;
   overflow: hidden;
 }
 
 .kanban-container {
-  height: calc(100vh - 220px);
   overflow: hidden;
-}
-
-.kanban-container.with-swimlanes {
-  height: calc(100vh - 180px);
+  flex-grow: 1;
+  display: flex;
+  flex-direction: column;
 }
 
 .kanban-board {
   display: flex;
   gap: 16px;
-  height: 100%;
+  flex-grow: 1;
   overflow-x: auto;
   overflow-y: hidden;
   padding: 0 8px 16px 8px;
+}
+
+.kanban-column {
+  min-width: 300px;
+  max-width: 350px;
+  display: flex;
+  flex-direction: column;
+}
+
+.column-card {
+  flex-grow: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.tasks-container {
+  flex-grow: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  min-height: 0;
+}
+
+.tasks-list {
+  flex-grow: 1;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+.task-dropzone {
+  min-height: 100px;
+}
+
+.task-card {
+  cursor: pointer;
+  border: 1px solid rgba(var(--v-theme-on-surface), 0.12);
+  background: rgb(var(--v-theme-surface));
+}
+
+.task-card:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+  border-color: rgba(var(--v-theme-primary), 0.3);
+}
+
+.empty-column {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  min-height: 120px;
+}
+
+.empty-content {
+  text-align: center;
+  opacity: 0.6;
+}
+
+.add-task-section {
+  flex-shrink: 0;
+  margin-top: 8px;
+  border-top: 1px solid rgba(var(--v-theme-on-surface), 0.12);
+  padding-top: 8px;
+  background: rgba(var(--v-theme-surface-variant), 0.1);
+}
+
+.add-task-btn {
+  opacity: 0.7;
+  transition: opacity 0.2s ease;
+}
+
+.kanban-column:hover .add-task-btn {
+  opacity: 1;
+}
+
+/* Drag & Drop Styles */
+.task-ghost {
+  opacity: 0.5;
+  transform: rotate(2deg);
+  background: rgba(var(--v-theme-primary), 0.1) !important;
+  border: 2px dashed rgba(var(--v-theme-primary), 0.3) !important;
+}
+
+.task-chosen {
+  transform: scale(1.02);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2) !important;
+  z-index: 1000;
+}
+
+.task-drag {
+  transform: rotate(2deg);
+  z-index: 1000;
+  opacity: 0.9;
 }
 
 .search-field {
   max-width: 400px;
 }
 
-.kanban-header {
-  flex-shrink: 0;
+/* Custom scrollbar */
+.tasks-list::-webkit-scrollbar {
+  width: 4px;
 }
 
-/* Custom scrollbar for board */
+.tasks-list::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.tasks-list::-webkit-scrollbar-thumb {
+  background: rgba(var(--v-theme-on-surface), 0.2);
+  border-radius: 2px;
+}
+
 .kanban-board::-webkit-scrollbar {
   height: 8px;
 }
@@ -490,28 +599,25 @@ watch(() => route.query.task, (taskId) => {
   border-radius: 4px;
 }
 
-.kanban-board::-webkit-scrollbar-thumb:hover {
-  background: rgba(var(--v-theme-on-surface), 0.5);
-}
-
 @media (max-width: 960px) {
   .kanban-container {
-    height: calc(100vh - 160px);
   }
   
   .kanban-board {
     gap: 12px;
     padding: 0 4px 12px 4px;
   }
+  
+  .kanban-column {
+    min-width: 250px;
+    max-width: 300px;
+  }
 }
 
 @media (max-width: 600px) {
-  .kanban-header .v-row > .v-col {
-    margin-bottom: 8px;
-  }
-  
-  .kanban-container {
-    height: calc(100vh - 140px);
+  .kanban-column {
+    min-width: 280px;
+    max-width: 100%;
   }
 }
 </style>

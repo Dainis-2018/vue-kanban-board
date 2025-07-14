@@ -1,40 +1,37 @@
 <template>
-  <div class="projects-view">
-    <!-- Header -->
-    <div class="d-flex align-center justify-space-between mb-6">
-      <div>
-        <h1 class="text-h4 font-weight-bold mb-2">Projects</h1>
-        <p class="text-body-1 text-medium-emphasis">
-          Manage your projects and track progress across teams
-        </p>
-      </div>
-      
-      <v-btn
-        color="primary"
-        size="large"
-        prepend-icon="mdi-plus"
-        @click="showCreateDialog = true"
-      >
-        New Project
-      </v-btn>
-    </div>
-
-    <!-- Filters and Search -->
+  <div class="projects-view pa-4">
+    <!-- Header Card -->
     <v-card class="mb-6">
-      <v-card-text>
+      <v-card-text class="pb-2">
         <v-row align="center">
+          <v-col cols="12" md="6">
+            <h1 class="text-h4 font-weight-bold">Projects</h1>
+            <p class="text-body-1 text-medium-emphasis mt-1">
+              Manage and organize your project portfolio
+            </p>
+          </v-col>
+          <v-col cols="12" md="6" class="text-md-end">
+            <v-btn
+              color="primary"
+              prepend-icon="mdi-plus"
+              @click="showCreateDialog = true"
+            >
+              New Project
+            </v-btn>
+          </v-col>
+        </v-row>
+
+        <v-row class="mt-4">
           <v-col cols="12" md="4">
             <v-text-field
               v-model="searchQuery"
-              placeholder="Search projects..."
               prepend-inner-icon="mdi-magnify"
+              label="Search projects"
               variant="outlined"
               density="compact"
               hide-details
-              clearable
             />
           </v-col>
-          
           <v-col cols="12" md="3">
             <v-select
               v-model="statusFilter"
@@ -42,11 +39,10 @@
               label="Status"
               variant="outlined"
               density="compact"
-              hide-details
               clearable
+              hide-details
             />
           </v-col>
-          
           <v-col cols="12" md="3">
             <v-select
               v-model="teamFilter"
@@ -54,11 +50,10 @@
               label="Team"
               variant="outlined"
               density="compact"
-              hide-details
               clearable
+              hide-details
             />
           </v-col>
-          
           <v-col cols="12" md="2">
             <v-btn-toggle
               v-model="viewMode"
@@ -92,6 +87,28 @@
             @view-roadmap="viewRoadmap"
           />
         </v-col>
+        
+        <v-col v-if="filteredProjects.length === 0" cols="12">
+          <v-card class="text-center pa-8">
+            <v-icon size="64" color="grey-lighten-1" class="mb-4">
+              mdi-folder-outline
+            </v-icon>
+            <h3 class="text-h6 mb-2">No projects found</h3>
+            <p class="text-body-2 text-medium-emphasis mb-4">
+              {{ searchQuery || statusFilter || teamFilter 
+                ? 'Try adjusting your filters' 
+                : 'Create your first project to get started' }}
+            </p>
+            <v-btn
+              v-if="!searchQuery && !statusFilter && !teamFilter"
+              color="primary"
+              prepend-icon="mdi-plus"
+              @click="showCreateDialog = true"
+            >
+              Create First Project
+            </v-btn>
+          </v-card>
+        </v-col>
       </v-row>
     </div>
 
@@ -100,7 +117,7 @@
         <v-data-table
           ref="dataTable"
           :headers="tableHeaders"
-          :items="draggableProjects"
+          :items="filteredProjects"
           :search="searchQuery"
           item-value="id"
           class="elevation-0"
@@ -108,7 +125,6 @@
           <template #item.name="{ item }">
             <div class="d-flex align-center">
               <v-avatar
-                v-if="!item.drag"
                 size="32"
                 :color="item.color"
                 class="mr-3"
@@ -117,9 +133,6 @@
                   {{ item.name.charAt(0) }}
                 </span>
               </v-avatar>
-              <v-icon v-else class="drag-handle mr-3" style="cursor: move;">
-                mdi-drag-horizontal
-              </v-icon>
               <div>
                 <div class="font-weight-medium">{{ item.name }}</div>
                 <div class="text-caption text-medium-emphasis">
@@ -128,22 +141,21 @@
               </div>
             </div>
           </template>
-          
+
           <template #item.status="{ item }">
             <v-chip
               :color="getStatusColor(item.status)"
               size="small"
               variant="flat"
             >
-              {{ item.status.toUpperCase() }}
+              {{ item.status }}
             </v-chip>
           </template>
-          
+
           <template #item.progress="{ item }">
             <div class="d-flex align-center">
               <v-progress-linear
                 :model-value="getProjectProgress(item.id)"
-                :color="item.color"
                 height="6"
                 rounded
                 class="mr-2"
@@ -152,92 +164,73 @@
               <span class="text-caption">{{ getProjectProgress(item.id) }}%</span>
             </div>
           </template>
-          
+
           <template #item.teams="{ item }">
-            <div class="d-flex align-center">
-              <div class="avatar-group">
-                <v-avatar
-                  v-for="teamId in item.teamIds.slice(0, 3)"
-                  :key="teamId"
-                  size="24"
-                  :color="getTeamById(teamId)?.color"
-                  class="avatar-group-item"
-                >
-                  <span class="text-caption text-white">
-                    {{ getTeamById(teamId)?.name?.charAt(0) }}
-                  </span>
-                </v-avatar>
-              </div>
-              <span v-if="item.teamIds.length > 3" class="text-caption ml-2">
-                +{{ item.teamIds.length - 3 }}
-              </span>
+            <div class="d-flex avatar-group">
+              <v-avatar
+                v-for="(teamId, index) in item.teamIds.slice(0, 3)"
+                :key="teamId"
+                size="24"
+                :class="index > 0 ? 'avatar-group-item' : ''"
+              >
+                <span class="text-caption">
+                  {{ getTeamById(teamId)?.name?.charAt(0) || 'T' }}
+                </span>
+              </v-avatar>
+              <v-avatar
+                v-if="item.teamIds.length > 3"
+                size="24"
+                color="grey-lighten-1"
+                class="avatar-group-item"
+              >
+                <span class="text-caption">+{{ item.teamIds.length - 3 }}</span>
+              </v-avatar>
             </div>
           </template>
-          
+
           <template #item.dueDate="{ item }">
-            <span class="text-body-2">
-              {{ formatDate(item.endDate) }}
-            </span>
+            <span class="text-body-2">{{ formatDate(item.dueDate) }}</span>
           </template>
-          
+
           <template #item.actions="{ item }">
-            <v-menu>
-              <template #activator="{ props }">
-                <v-btn
-                  v-bind="props"
-                  icon="mdi-dots-vertical"
-                  variant="text"
-                  size="small"
-                />
-              </template>
-              
-              <v-list density="compact">
-                <v-list-item
-                  prepend-icon="mdi-view-column"
-                  title="Kanban Board"
-                  @click="viewKanban(item)"
-                />
-                <v-list-item
-                  prepend-icon="mdi-map"
-                  title="Roadmap"
-                  @click="viewRoadmap(item)"
-                />
-                <v-divider />
-                <v-list-item
-                  prepend-icon="mdi-pencil"
-                  title="Edit"
-                  @click="editProject(item)"
-                />
-                <v-list-item
-                  prepend-icon="mdi-delete"
-                  title="Delete"
-                  @click="confirmDelete(item)"
-                />
-              </v-list>
-            </v-menu>
+            <div class="d-flex justify-center">
+              <v-menu location="bottom end" :attach="dataTable?.$el">
+                <template #activator="{ props }">
+                  <v-btn v-bind="props" icon="mdi-dots-vertical" size="small" variant="text" />
+                </template>
+                <v-list density="compact">
+                  <v-list-item @click="viewKanban(item)">
+                    <template #prepend>
+                      <v-icon>mdi-view-column</v-icon>
+                    </template>
+                    <v-list-item-title>View Kanban</v-list-item-title>
+                  </v-list-item>
+                  <v-list-item @click="viewRoadmap(item)">
+                    <template #prepend>
+                      <v-icon>mdi-timeline</v-icon>
+                    </template>
+                    <v-list-item-title>View Roadmap</v-list-item-title>
+                  </v-list-item>
+                  <v-divider />
+                  <v-list-item @click="editProject(item)">
+                    <template #prepend>
+                      <v-icon>mdi-pencil</v-icon>
+                    </template>
+                    <v-list-item-title>Edit</v-list-item-title>
+                  </v-list-item>
+                  <v-list-item @click="confirmDelete(item)" class="text-error">
+                    <template #prepend>
+                      <v-icon color="error">mdi-delete</v-icon>
+                    </template>
+                    <v-list-item-title>Delete</v-list-item-title>
+                  </v-list-item>
+                </v-list>
+              </v-menu>
+            </div>
           </template>
         </v-data-table>
       </v-card>
     </div>
-
-    <!-- Empty State -->
-    <v-card v-if="filteredProjects.length === 0" class="text-center pa-8">
-      <v-icon size="64" color="medium-emphasis" class="mb-4">
-        mdi-folder-multiple-outline
-      </v-icon>
-      <h3 class="text-h6 mb-2">No Projects Found</h3>
-      <p class="text-body-2 text-medium-emphasis mb-4">
-        {{ searchQuery ? 'Try adjusting your search or filters.' : 'Get started by creating your first project.' }}
-      </p>
-      <v-btn
-        v-if="!searchQuery"
-        color="primary"
-        prepend-icon="mdi-plus"
-        @click="showCreateDialog = true"
-      >
-        Create Project
-      </v-btn>
-    </v-card>
 
     <!-- Create/Edit Project Dialog -->
     <ProjectDialog
@@ -252,7 +245,7 @@
       <v-card>
         <v-card-title class="text-h6">Delete Project</v-card-title>
         <v-card-text>
-          Are you sure you want to delete "{{ deletingProject?.name }}"? 
+          Are you sure you want to delete <strong>{{ deletingProject?.name }}</strong>?
           This action cannot be undone and will also delete all associated tasks.
         </v-card-text>
         <v-card-actions>
@@ -272,14 +265,13 @@
 </template>
 
 <script setup>
-import { ref, computed, watch, nextTick, onBeforeUnmount } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useProjectsStore } from '@/stores/projects'
 import { useTasksStore } from '@/stores/tasks'
 import { useUIStore } from '@/stores/ui'
 import ProjectCard from '@/components/project/ProjectCard.vue'
 import ProjectDialog from '@/components/project/ProjectDialog.vue'
-import { useDraggable } from 'vue-draggable-plus'
 
 // Composables
 const router = useRouter()
@@ -298,7 +290,6 @@ const showDeleteDialog = ref(false)
 const editingProject = ref(null)
 const deletingProject = ref(null)
 const deleting = ref(false)
-const draggableInstance = ref(null)
 
 // Store getters
 const projects = computed(() => projectsStore.projects)
@@ -322,7 +313,6 @@ const teamOptions = computed(() =>
 
 // Table headers for list view
 const tableHeaders = [
-  { title: '', key: 'name', sortable: false, width: '30px' },
   { title: 'Project', key: 'name', sortable: true },
   { title: 'Status', key: 'status', sortable: true },
   { title: 'Progress', key: 'progress', sortable: false },
@@ -358,22 +348,6 @@ const filteredProjects = computed(() => {
 
   return filtered
 })
-
-const draggableProjects = computed({
-  get: () => filteredProjects.value.map(p => ({ ...p, drag: true })),
-  set: (newOrder) => {
-    // If you need to persist the order, you can map the newOrder
-    // back to an array of IDs and call a store action here.
-    // For example:
-    // const newProjectOrder = newOrder.map(p => p.id);
-    // projectsStore.updateProjectOrder(newProjectOrder);
-  }
-})
-
-const draggableOptions = computed(() => ({
-  animation: 150,
-  handle: '.drag-handle'
-}))
 
 // Methods
 const getProjectProgress = (projectId) => {
@@ -478,38 +452,16 @@ const handleDelete = async () => {
   }
 }
 
-// --- Drag and Drop Logic ---
-
-const initDraggable = () => {
-  // Ensure we run this after the DOM has been updated
-  nextTick(() => {
-    if (draggableInstance.value) return // Already initialized
-
-    const tbody = dataTable.value?.$el?.querySelector('tbody')
-    if (tbody) {
-      draggableInstance.value = useDraggable(tbody, draggableProjects, draggableOptions)
-    }
-  })
-}
-
-const destroyDraggable = () => {
-  if (draggableInstance.value) {
-    draggableInstance.value.destroy()
-    draggableInstance.value = null
+// Initialize data
+onMounted(() => {
+  // Load projects and tasks if needed
+  if (projects.value.length === 0) {
+    projectsStore.fetchProjects()
   }
-}
-
-// Watch for conditions to be right for initializing or destroying draggable
-watch([viewMode, filteredProjects], ([mode, projects]) => {
-  if (mode === 'list' && projects.length > 0) {
-    initDraggable()
-  } else {
-    destroyDraggable()
+  if (allTasks.value.length === 0) {
+    tasksStore.fetchTasks()
   }
 })
-
-// Clean up on component unmount
-onBeforeUnmount(destroyDraggable)
 </script>
 
 <style scoped>

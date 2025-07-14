@@ -1,160 +1,239 @@
 import { defineStore } from 'pinia'
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 
 export const useUIStore = defineStore('ui', () => {
   // State
   const globalLoading = ref(false)
-  const sidebarCollapsed = ref(false)
+  const notifications = ref([])
+  const sidebarOpen = ref(true)
   const theme = ref('light')
-  const locale = ref('en')
-  const toasts = ref([])
+  
+  // Settings
+  const settings = ref({
+    compactMode: false,
+    showSwimlanes: false,
+    autoSave: true,
+    notifications: true
+  })
 
-  // Toast management
-  let toastId = 0
+  // Getters
+  const activeNotifications = computed(() => 
+    notifications.value.filter(n => n.active)
+  )
+  
+  const unreadNotifications = computed(() => 
+    notifications.value.filter(n => !n.read)
+  )
 
   // Actions
+  const showNotification = (notification) => {
+    const id = Date.now() + Math.random()
+    const newNotification = {
+      id,
+      timestamp: new Date().toISOString(),
+      active: true,
+      read: false,
+      autoClose: true,
+      duration: 5000,
+      ...notification
+    }
+    
+    notifications.value.unshift(newNotification)
+    
+    // Auto close if enabled
+    if (newNotification.autoClose) {
+      setTimeout(() => {
+        closeNotification(id)
+      }, newNotification.duration)
+    }
+    
+    return id
+  }
+
+  const showSuccess = (message, options = {}) => {
+    return showNotification({
+      type: 'success',
+      title: 'Success',
+      message,
+      color: 'success',
+      icon: 'mdi-check-circle',
+      ...options
+    })
+  }
+
+  const showError = (message, options = {}) => {
+    return showNotification({
+      type: 'error',
+      title: 'Error',
+      message,
+      color: 'error',
+      icon: 'mdi-alert-circle',
+      autoClose: false, // Errors should stay visible
+      ...options
+    })
+  }
+
+  const showWarning = (message, options = {}) => {
+    return showNotification({
+      type: 'warning',
+      title: 'Warning',
+      message,
+      color: 'warning',
+      icon: 'mdi-alert',
+      duration: 7000,
+      ...options
+    })
+  }
+
+  const showInfo = (message, options = {}) => {
+    return showNotification({
+      type: 'info',
+      title: 'Info',
+      message,
+      color: 'info',
+      icon: 'mdi-information',
+      ...options
+    })
+  }
+
+  const closeNotification = (id) => {
+    const index = notifications.value.findIndex(n => n.id === id)
+    if (index !== -1) {
+      notifications.value[index].active = false
+      
+      // Remove after animation
+      setTimeout(() => {
+        const currentIndex = notifications.value.findIndex(n => n.id === id)
+        if (currentIndex !== -1) {
+          notifications.value.splice(currentIndex, 1)
+        }
+      }, 300)
+    }
+  }
+
+  const markNotificationRead = (id) => {
+    const notification = notifications.value.find(n => n.id === id)
+    if (notification) {
+      notification.read = true
+    }
+  }
+
+  const markAllNotificationsRead = () => {
+    notifications.value.forEach(notification => {
+      notification.read = true
+    })
+  }
+
+  const clearAllNotifications = () => {
+    notifications.value = []
+  }
+
   const setGlobalLoading = (loading) => {
     globalLoading.value = loading
   }
 
   const toggleSidebar = () => {
-    sidebarCollapsed.value = !sidebarCollapsed.value
+    sidebarOpen.value = !sidebarOpen.value
+    saveToStorage()
   }
 
-  const setSidebarCollapsed = (collapsed) => {
-    sidebarCollapsed.value = collapsed
+  const setSidebarOpen = (open) => {
+    sidebarOpen.value = open
+    saveToStorage()
   }
 
   const setTheme = (newTheme) => {
     theme.value = newTheme
-    // Save to localStorage if available
+    saveToStorage()
+  }
+
+  const toggleTheme = () => {
+    theme.value = theme.value === 'light' ? 'dark' : 'light'
+    saveToStorage()
+  }
+
+  const updateSettings = (newSettings) => {
+    settings.value = { ...settings.value, ...newSettings }
+    saveToStorage()
+  }
+
+  // Storage functions
+  const saveToStorage = () => {
     if (typeof localStorage !== 'undefined') {
-      localStorage.setItem('kanban-theme', newTheme)
+      try {
+        const uiState = {
+          sidebarOpen: sidebarOpen.value,
+          theme: theme.value,
+          settings: settings.value
+        }
+        localStorage.setItem('kanban-ui-state', JSON.stringify(uiState))
+      } catch (e) {
+        console.warn('Failed to save UI state to localStorage:', e)
+      }
     }
   }
 
-  const setLocale = (newLocale) => {
-    locale.value = newLocale
-    // Save to localStorage if available
+  const loadFromStorage = () => {
     if (typeof localStorage !== 'undefined') {
-      localStorage.setItem('kanban-locale', newLocale)
+      try {
+        const stored = localStorage.getItem('kanban-ui-state')
+        if (stored) {
+          const uiState = JSON.parse(stored)
+          sidebarOpen.value = uiState.sidebarOpen ?? true
+          theme.value = uiState.theme ?? 'light'
+          settings.value = { ...settings.value, ...uiState.settings }
+        }
+      } catch (e) {
+        console.warn('Failed to load UI state from localStorage:', e)
+      }
     }
   }
 
   const initializeFromStorage = () => {
-    if (typeof localStorage !== 'undefined') {
-      // Load theme from localStorage
-      const savedTheme = localStorage.getItem('kanban-theme')
-      if (savedTheme && ['light', 'dark'].includes(savedTheme)) {
-        theme.value = savedTheme
-      }
-
-      // Load locale from localStorage
-      const savedLocale = localStorage.getItem('kanban-locale')
-      if (savedLocale) {
-        locale.value = savedLocale
-      }
-
-      // Load sidebar state from localStorage
-      const savedSidebarState = localStorage.getItem('kanban-sidebar-collapsed')
-      if (savedSidebarState !== null) {
-        sidebarCollapsed.value = savedSidebarState === 'true'
-      }
-    }
+    loadFromStorage()
   }
 
-  const showToast = ({ 
-    message, 
-    type = 'info', 
-    duration = 5000, 
-    persistent = false 
-  }) => {
-    const toast = {
-      id: ++toastId,
-      message,
-      type,
-      duration,
-      persistent,
-      timestamp: Date.now()
-    }
-    
-    toasts.value.push(toast)
-    
-    if (!persistent && duration > 0) {
-      setTimeout(() => {
-        removeToast(toast.id)
-      }, duration)
-    }
-    
-    return toast.id
-  }
-
-  const removeToast = (id) => {
-    const index = toasts.value.findIndex(toast => toast.id === id)
-    if (index > -1) {
-      toasts.value.splice(index, 1)
-    }
-  }
-
-  const clearAllToasts = () => {
-    toasts.value = []
-  }
-
-  // Toast helper methods
-  const showSuccess = (message, options = {}) => {
-    return showToast({ 
-      message, 
-      type: 'success', 
-      ...options 
-    })
-  }
-
-  const showError = (message, options = {}) => {
-    return showToast({ 
-      message, 
-      type: 'error', 
-      persistent: true,
-      ...options 
-    })
-  }
-
-  const showWarning = (message, options = {}) => {
-    return showToast({ 
-      message, 
-      type: 'warning', 
-      ...options 
-    })
-  }
-
-  const showInfo = (message, options = {}) => {
-    return showToast({ 
-      message, 
-      type: 'info', 
-      ...options 
-    })
+  // Auto-save settings when they change
+  const startAutoSave = () => {
+    // This would be called if we had watchers, but we're keeping it simple
+    // and saving manually after each change
   }
 
   return {
     // State
     globalLoading,
-    sidebarCollapsed,
+    notifications,
+    sidebarOpen,
     theme,
-    locale,
-    toasts,
-
-    // Actions
-    setGlobalLoading,
-    toggleSidebar,
-    setSidebarCollapsed,
-    setTheme,
-    setLocale,
-    initializeFromStorage,
-    showToast,
-    removeToast,
-    clearAllToasts,
+    settings,
+    
+    // Getters
+    activeNotifications,
+    unreadNotifications,
+    
+    // Notification actions
+    showNotification,
     showSuccess,
     showError,
     showWarning,
-    showInfo
+    showInfo,
+    closeNotification,
+    markNotificationRead,
+    markAllNotificationsRead,
+    clearAllNotifications,
+    
+    // UI actions
+    setGlobalLoading,
+    toggleSidebar,
+    setSidebarOpen,
+    setTheme,
+    toggleTheme,
+    updateSettings,
+    
+    // Storage
+    saveToStorage,
+    loadFromStorage,
+    initializeFromStorage,
+    startAutoSave
   }
 })

@@ -1,135 +1,119 @@
 <template>
   <v-card 
-    class="project-card h-100 d-flex flex-column"
-    :class="{ 'project-card--current': isCurrentProject }"
+    class="project-card h-100"
     elevation="2"
-    hover
+    :class="{ 
+      'project-card--current': isCurrentProject,
+      'project-card--overdue': isOverdue 
+    }"
   >
-    <!-- Header with Project Color -->
-    <div 
-      class="project-header"
-      :style="{ backgroundColor: project.color }"
-    >
-      <div class="d-flex align-center justify-space-between pa-4">
-        <v-avatar 
-          size="40" 
-          color="white" 
-          variant="flat"
+    <!-- Header -->
+    <v-card-text class="pb-2">
+      <div class="d-flex align-center justify-space-between mb-3">
+        <v-avatar
+          :color="project.color"
+          size="40"
         >
-          <span 
-            class="text-h6 font-weight-bold"
-            :style="{ color: project.color }"
-          >
+          <span class="text-white text-h6">
             {{ project.name.charAt(0) }}
           </span>
         </v-avatar>
         
-        <v-menu>
+        <v-menu offset-y>
           <template #activator="{ props }">
             <v-btn
               v-bind="props"
               icon="mdi-dots-vertical"
               variant="text"
-              color="white"
               size="small"
             />
           </template>
-          
           <v-list density="compact">
-            <v-list-item
-              prepend-icon="mdi-view-column"
-              title="Kanban Board"
-              @click="$emit('view-kanban', project)"
-            />
-            <v-list-item
-              prepend-icon="mdi-map"
-              title="Roadmap"
-              @click="$emit('view-roadmap', project)"
-            />
+            <v-list-item @click="$emit('edit', project)">
+              <template #prepend>
+                <v-icon>mdi-pencil</v-icon>
+              </template>
+              <v-list-item-title>Edit</v-list-item-title>
+            </v-list-item>
+            <v-list-item @click="$emit('view-roadmap', project)">
+              <template #prepend>
+                <v-icon>mdi-map</v-icon>
+              </template>
+              <v-list-item-title>View Roadmap</v-list-item-title>
+            </v-list-item>
             <v-divider />
-            <v-list-item
-              prepend-icon="mdi-pencil"
-              title="Edit"
-              @click="$emit('edit', project)"
-            />
-            <v-list-item
-              prepend-icon="mdi-delete"
-              title="Delete"
-              @click="$emit('delete', project)"
-            />
+            <v-list-item @click="$emit('delete', project)" class="text-error">
+              <template #prepend>
+                <v-icon color="error">mdi-delete</v-icon>
+              </template>
+              <v-list-item-title>Delete</v-list-item-title>
+            </v-list-item>
           </v-list>
         </v-menu>
       </div>
-    </div>
 
-    <!-- Content -->
-    <v-card-text class="flex-grow-1 d-flex flex-column pa-4">
-      <!-- Project Title and Description -->
+      <!-- Project Name & Description -->
       <div class="mb-3">
-        <h3 class="text-h6 font-weight-bold mb-1 text-truncate">
-          {{ project.name }}
-        </h3>
-        <p class="text-body-2 text-medium-emphasis line-clamp-2">
+        <h3 class="text-h6 font-weight-bold mb-1">{{ project.name }}</h3>
+        <p class="text-body-2 text-medium-emphasis">
           {{ project.description }}
         </p>
       </div>
 
-      <!-- Status Badge -->
+      <!-- Status -->
       <div class="mb-3">
         <v-chip
           :color="getStatusColor(project.status)"
           size="small"
           variant="flat"
         >
-          {{ project.status.replace('-', ' ').toUpperCase() }}
+          {{ project.status }}
         </v-chip>
       </div>
 
       <!-- Progress -->
       <div class="mb-3">
-        <div class="d-flex align-center justify-space-between mb-1">
+        <div class="d-flex align-center justify-space-between mb-2">
           <span class="text-body-2 font-weight-medium">Progress</span>
-          <span class="text-body-2 text-medium-emphasis">
-            {{ progress }}%
-          </span>
+          <span class="text-body-2">{{ progress }}%</span>
         </div>
         <v-progress-linear
           :model-value="progress"
-          :color="project.color"
           height="6"
           rounded
+          :color="project.color"
         />
         <div class="d-flex justify-space-between mt-1">
           <span class="text-caption text-medium-emphasis">
-            {{ completedTasks }} completed
+            {{ completedTasks }}/{{ totalTasks }} tasks
           </span>
           <span class="text-caption text-medium-emphasis">
-            {{ totalTasks }} total tasks
+            {{ totalTasks - completedTasks }} remaining
           </span>
         </div>
       </div>
 
-      <!-- Dates -->
-      <div class="mb-3">
-        <div class="d-flex align-center justify-space-between">
-          <div class="text-center flex-grow-1">
-            <p class="text-caption text-medium-emphasis mb-0">Start Date</p>
-            <p class="text-body-2 font-weight-medium">
-              {{ formatDate(project.startDate) }}
-            </p>
-          </div>
-          <v-divider vertical class="mx-3" />
-          <div class="text-center flex-grow-1">
-            <p class="text-caption text-medium-emphasis mb-0">End Date</p>
-            <p class="text-body-2 font-weight-medium" :class="isOverdue ? 'text-error' : ''">
-              {{ formatDate(project.endDate) }}
-            </p>
-          </div>
+      <!-- Due Date -->
+      <div v-if="project.endDate" class="mb-3">
+        <div class="d-flex align-center">
+          <v-icon 
+            size="16" 
+            class="mr-2"
+            :color="isOverdue ? 'error' : ''"
+          >
+            mdi-calendar
+          </v-icon>
+          <span 
+            class="text-body-2"
+            :class="isOverdue ? 'text-error' : ''"
+          >
+            Due {{ formatDate(project.endDate) }}
+          </span>
         </div>
       </div>
 
       <!-- Teams -->
-      <div class="mb-3 flex-grow-1">
+      <div class="mb-3">
         <p class="text-body-2 font-weight-medium mb-2">Teams</p>
         <div class="d-flex flex-wrap ga-1">
           <v-chip
@@ -281,35 +265,51 @@ const getTeamColor = (teamId) => {
 }
 
 const formatDate = (dateString) => {
-  if (!dateString) return 'Not set'
   return new Date(dateString).toLocaleDateString('en-US', {
+    year: 'numeric',
     month: 'short',
-    day: 'numeric',
-    year: 'numeric'
+    day: 'numeric'
   })
 }
 </script>
 
 <style scoped>
 .project-card {
+  transition: all 0.2s ease;
   position: relative;
-  transition: all 0.3s ease;
-  border-radius: 12px;
   overflow: hidden;
 }
 
 .project-card:hover {
   transform: translateY(-2px);
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+  box-shadow: 0 8px 25px rgba(0,0,0,0.15);
 }
 
 .project-card--current {
   border: 2px solid rgb(var(--v-theme-primary));
 }
 
-.project-header {
-  position: relative;
-  background: linear-gradient(135deg, var(--color) 0%, var(--color-dark) 100%);
+.project-card--overdue {
+  border-left: 4px solid rgb(var(--v-theme-error));
+}
+
+.avatar-group {
+  display: flex;
+}
+
+.avatar-group-item {
+  margin-left: -8px;
+  border: 2px solid rgb(var(--v-theme-surface));
+  transition: transform 0.2s ease;
+}
+
+.avatar-group-item:first-child {
+  margin-left: 0;
+}
+
+.avatar-group-item:hover {
+  transform: scale(1.1);
+  z-index: 2;
 }
 
 .current-project-indicator {
@@ -320,38 +320,18 @@ const formatDate = (dateString) => {
   border-radius: 12px;
   display: flex;
   align-items: center;
-  backdrop-filter: blur(10px);
-  background: rgba(255, 255, 255, 0.2);
+  font-size: 0.75rem;
 }
 
-.line-clamp-2 {
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.avatar-group {
-  display: flex;
-}
-
-.avatar-group-item {
-  margin-left: -10px;
-  border: 2px solid rgb(var(--v-theme-surface));
-  transition: transform 0.2s ease-in-out;
-}
-.avatar-group-item:first-child {
-  margin-left: 0;
-}
-
-:deep(.v-progress-linear) {
-  border-radius: 3px;
-}
-
-@media (max-width: 960px) {
-  .project-card {
-    margin-bottom: 16px;
+@media (max-width: 600px) {
+  .avatar-group-item {
+    margin-left: -4px;
+  }
+  
+  .current-project-indicator {
+    top: 8px;
+    right: 8px;
+    padding: 2px 6px;
   }
 }
 </style>
