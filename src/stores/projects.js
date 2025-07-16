@@ -82,6 +82,7 @@ export const useProjectsStore = defineStore('projects', () => {
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
         teamIds: [],
+        color: 'primary',
         ...projectData
       }
       projects.value.push(newProject)
@@ -163,6 +164,8 @@ export const useProjectsStore = defineStore('projects', () => {
         id: `team-${Date.now()}`,
         members: [],
         createdAt: new Date().toISOString(),
+        color: 'primary',
+        icon: 'mdi-account-group',
         ...teamData
       }
       teams.value.push(newTeam)
@@ -182,8 +185,7 @@ export const useProjectsStore = defineStore('projects', () => {
       if (index !== -1) {
         teams.value[index] = { 
           ...teams.value[index], 
-          ...updates,
-          updatedAt: new Date().toISOString()
+          ...updates
         }
         return teams.value[index]
       }
@@ -203,14 +205,6 @@ export const useProjectsStore = defineStore('projects', () => {
       if (index !== -1) {
         teams.value.splice(index, 1)
       }
-      
-      // Remove team from all projects
-      projects.value.forEach(project => {
-        const teamIndex = project.teamIds.indexOf(teamId)
-        if (teamIndex !== -1) {
-          project.teamIds.splice(teamIndex, 1)
-        }
-      })
     } catch (err) {
       error.value = err.message
       throw err

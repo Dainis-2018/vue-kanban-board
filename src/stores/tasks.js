@@ -70,11 +70,13 @@ export const useTasksStore = defineStore('tasks', () => {
         updatedAt: new Date().toISOString(),
         priority: 'medium',
         columnId: 'todo',
-        tags: [],
+        swimlane: 'feature',
         commentsCount: 0,
         attachmentsCount: 0,
         subtasksCount: 0,
         completedSubtasks: 0,
+        order: 1,
+        tags: [],
         ...taskData
       }
       tasks.value.push(newTask)
@@ -90,7 +92,7 @@ export const useTasksStore = defineStore('tasks', () => {
   const updateTask = async (taskId, updates) => {
     try {
       loading.value = true
-      const index = tasks.value.findIndex(task => task.id === taskId)
+      const index = tasks.value.findIndex(t => t.id === taskId)
       if (index !== -1) {
         tasks.value[index] = {
           ...tasks.value[index],
@@ -111,12 +113,10 @@ export const useTasksStore = defineStore('tasks', () => {
   const deleteTask = async (taskId) => {
     try {
       loading.value = true
-      const index = tasks.value.findIndex(task => task.id === taskId)
+      const index = tasks.value.findIndex(t => t.id === taskId)
       if (index !== -1) {
         tasks.value.splice(index, 1)
-        return true
       }
-      throw new Error('Task not found')
     } catch (err) {
       error.value = err.message
       throw err
@@ -125,19 +125,16 @@ export const useTasksStore = defineStore('tasks', () => {
     }
   }
 
-  const moveTask = async (taskId, newColumnId, newIndex) => {
+  const moveTask = async (taskId, newColumnId, newOrder = null) => {
     try {
       const task = tasks.value.find(t => t.id === taskId)
-      if (!task) throw new Error('Task not found')
-      
-      // Update task column
-      task.columnId = newColumnId
-      task.updatedAt = new Date().toISOString()
-      
-      // If you need to handle ordering within columns, you can implement that here
-      // For now, we just update the column
-      
-      return task
+      if (task) {
+        task.columnId = newColumnId
+        task.updatedAt = new Date().toISOString()
+        if (newOrder !== null) {
+          task.order = newOrder
+        }
+      }
     } catch (err) {
       error.value = err.message
       throw err
@@ -440,6 +437,7 @@ export const useTasksStore = defineStore('tasks', () => {
 
   // Initialize with sample data if empty
   const initializeData = () => {
+    // Initialize with sample data if empty
     if (tasks.value.length === 0) {
       tasks.value = [...sampleData.tasks]
     }
