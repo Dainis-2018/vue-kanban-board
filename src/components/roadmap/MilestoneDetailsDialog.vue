@@ -163,20 +163,23 @@
                           <div class="d-flex align-center justify-space-between">
                             <div class="d-flex align-center">
                               <!-- Assignees -->
-                              <v-avatar-group
+                              <div
                                 v-if="task.assigneeIds?.length"
-                                max="3"
-                                size="24"
-                                class="mr-3"
+                                class="d-flex align-center mr-3"
                               >
                                 <v-avatar
-                                  v-for="userId in task.assigneeIds"
+                                  v-for="userId in task.assigneeIds.slice(0, 3)"
                                   :key="userId"
                                   size="24"
+                                  class="assignee-avatar"
                                 >
-                                  <v-img :src="getUserById(userId)?.avatar" />
+                                  <v-img :src="getUserById(userId)?.avatar" :alt="getUserById(userId)?.name" />
+                                  <v-tooltip activator="parent" location="top">{{ getUserById(userId)?.name }}</v-tooltip>
                                 </v-avatar>
-                              </v-avatar-group>
+                                <v-avatar v-if="task.assigneeIds.length > 3" size="24" color="grey-lighten-1" class="assignee-avatar">
+                                  <span class="text-caption text-white">+{{ task.assigneeIds.length - 3 }}</span>
+                                </v-avatar>
+                              </div>
                               
                               <!-- Tags -->
                               <div v-if="task.tags?.length" class="d-flex align-center ga-1">
@@ -588,6 +591,15 @@ const unlinkTask = (taskId) => {
 </script>
 
 <style scoped>
+.assignee-avatar {
+  margin-left: -8px;
+  border: 2px solid white;
+}
+
+.assignee-avatar:first-child {
+  margin-left: 0;
+}
+
 .tasks-container {
   max-height: 300px;
   overflow-y: auto;

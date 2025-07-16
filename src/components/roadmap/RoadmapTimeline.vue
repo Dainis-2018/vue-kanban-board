@@ -22,16 +22,33 @@ let timeline = null
 const initializeTimeline = () => {
   if (!timelineContainer.value) return
 
+  // Function to safely convert date strings to Date objects
+  const safeDate = (dateString) => {
+    try {
+      return dateString ? new Date(dateString) : null;
+    } catch (e) {
+      console.warn('Invalid date:', dateString, e);
+      return null;
+    }
+  }
+
   const items = new DataSet(
     props.items.map(item => ({
-      id: item.id,
-      content: item.title,
-      start: new Date(item.start),
-      end: new Date(item.end),
+      id: item.id,content: item.title,
+      content: item.title || 'No Title',
+      start: safeDate(item.startDate), // Use safeDate for start
+          // Use the safeDate function for conversion
+      color: item.color || '#2196f3', // Use a default color
+      end: safeDate(item.endDate),
       type: 'range',
       className: `milestone-${item.status}`,
-      style: `background-color: ${item.color}; border-color: ${item.color};`
-    }))
+      style: `background-color: ${item.color}; border-color: ${item.color};` // Use template literals
+    })).filter(item => {
+      const isValid = item && item.start && item.end;
+      if (!isValid) console.log("Filtered out item due to invalid date:", item);
+      return isValid;
+    })
+
   )
 
   const options = {

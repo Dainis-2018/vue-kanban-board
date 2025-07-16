@@ -8,10 +8,11 @@ export default defineConfig({
     vue(),
     vuetify({ 
       autoImport: true,
+      labs: true,
       theme: {
         defaultTheme: 'light'
       }
-    })
+    }),
   ],
   resolve: {
     alias: {

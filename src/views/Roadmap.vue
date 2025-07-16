@@ -106,7 +106,7 @@
     </div>
 
     <!-- Timeline Container -->
-    <div v-if="viewMode === 'timeline' || viewMode === 'gantt'" class="timeline-container">
+    <div v-if="(viewMode === 'timeline' || viewMode === 'gantt') && roadmapItems.length > 0" class="timeline-container">
       <v-card class="timeline-card">
         <v-card-text class="pa-0">
           <RoadmapTimeline
@@ -126,7 +126,7 @@
     </div>
 
     <!-- List View -->
-    <div v-else-if="viewMode === 'list'" class="list-container">
+    <div v-else-if="viewMode === 'list' && roadmapItems.length > 0" class="list-container">
       <RoadmapList
         :items="roadmapItems"
         :tasks="linkedTasks"
@@ -410,6 +410,9 @@ const timelineOptions = computed(() => ({
       year: ''
     }
   },
+  // To resolve non-passive event listener warnings, we use a zoomKey.
+  // The user must hold Ctrl to zoom, allowing normal page scroll otherwise.
+  zoomKey: 'ctrlKey',
   ...getTimeRangeOptions()
 }))
 
@@ -437,7 +440,16 @@ const getTimeRangeOptions = () => {
       end.setFullYear(now.getFullYear() + 2)
       break
     default:
-      return {}
+      // When 'custom' is selected, vis-timeline will 'fit' the data.
+      // If there's no data, this causes an "Invalid start 'NaN'" error.
+      if (roadmapItems.value.length > 0) {
+        return {}
+      }
+      // Fallback for custom range with no items to prevent crash.
+      // We can default to a 6 month view.
+      start.setMonth(now.getMonth() - 2)
+      end.setMonth(now.getMonth() + 6)
+      break
   }
   
   return { start, end }

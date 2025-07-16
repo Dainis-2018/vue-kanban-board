@@ -19,13 +19,14 @@
           </span>
         </v-avatar>
         
-        <v-menu offset-y>
+        <v-menu location="bottom end">
           <template #activator="{ props }">
             <v-btn
               v-bind="props"
               icon="mdi-dots-vertical"
               variant="text"
               size="small"
+              style="position: relative; z-index: 2;"
             />
           </template>
           <v-list density="compact">
@@ -315,12 +316,13 @@ const formatDate = (dateString) => {
 .current-project-indicator {
   position: absolute;
   top: 12px;
-  right: 12px;
+  right: 60px; /* Create space for the menu button */
   padding: 4px 8px;
   border-radius: 12px;
   display: flex;
   align-items: center;
   font-size: 0.75rem;
+  z-index: 1;
 }
 
 @media (max-width: 600px) {
@@ -330,7 +332,7 @@ const formatDate = (dateString) => {
   
   .current-project-indicator {
     top: 8px;
-    right: 8px;
+    right: 52px;
     padding: 2px 6px;
   }
 }
