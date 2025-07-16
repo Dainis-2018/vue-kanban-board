@@ -1,7 +1,7 @@
 <template>
   <div class="roadmap-view">
     <!-- Header Controls -->
-    <div class="roadmap-header mb-4">
+    <div class="roadmap-header mb-6">
       <v-row align="center">
         <v-col cols="12" md="6">
           <div class="d-flex align-center">
@@ -21,8 +21,7 @@
                 {{ currentProject?.name || 'Project' }} Roadmap
               </h1>
               <p class="text-body-2 text-medium-emphasis mb-0">
-                {{ roadmapItems.length }} milestone{{ roadmapItems.length !== 1 ? 's' : '' }} • 
-                {{ linkedTasks.length }} linked tasks
+                {{ activeMilestones }} active • {{ completedMilestones }} completed • {{ projectProgress }}% overall progress
               </p>
             </div>
           </div>
@@ -30,37 +29,29 @@
         
         <v-col cols="12" md="6" class="text-md-right">
           <div class="d-flex align-center justify-end flex-wrap ga-2">
-            <!-- View Controls -->
+            <!-- View Mode Toggle -->
             <v-btn-toggle
               v-model="viewMode"
               variant="outlined"
               size="small"
               mandatory
             >
-              <v-btn value="timeline" prepend-icon="mdi-timeline">
-                Timeline
-              </v-btn>
-              <v-btn value="gantt" prepend-icon="mdi-chart-gantt">
-                Gantt
-              </v-btn>
-              <v-btn value="list" prepend-icon="mdi-format-list-bulleted">
-                List
-              </v-btn>
+              <v-btn value="timeline" icon="mdi-timeline" />
+              <v-btn value="list" icon="mdi-format-list-bulleted" />
             </v-btn-toggle>
             
-            <!-- Time Range -->
-            <v-menu offset-y>
+            <!-- Time Range Selector -->
+            <v-menu v-if="viewMode === 'timeline'">
               <template #activator="{ props }">
                 <v-btn
                   v-bind="props"
                   variant="outlined"
                   size="small"
-                  prepend-icon="mdi-calendar-range"
+                  append-icon="mdi-chevron-down"
                 >
                   {{ timeRangeLabel }}
                 </v-btn>
               </template>
-              
               <v-list>
                 <v-list-item
                   v-for="range in timeRanges"
@@ -72,7 +63,7 @@
               </v-list>
             </v-menu>
             
-            <!-- Add Milestone -->
+            <!-- Add Milestone Button -->
             <v-btn
               color="primary"
               size="small"
@@ -82,7 +73,7 @@
               Add Milestone
             </v-btn>
             
-            <!-- Roadmap Settings -->
+            <!-- Settings Menu -->
             <v-menu offset-y>
               <template #activator="{ props }">
                 <v-btn
@@ -93,12 +84,31 @@
                 />
               </template>
               
-              <RoadmapSettings
-                v-model:show-tasks="showLinkedTasks"
-                v-model:show-dependencies="showDependencies"
-                v-model:group-by="groupBy"
-                @export="exportRoadmap"
-              />
+              <v-card min-width="250">
+                <v-card-title>Roadmap Settings</v-card-title>
+                <v-card-text>
+                  <v-switch
+                    v-model="showLinkedTasks"
+                    label="Show linked tasks"
+                    density="compact"
+                  />
+                  <v-switch
+                    v-model="showDependencies"
+                    label="Show dependencies"
+                    density="compact"
+                  />
+                  <v-select
+                    v-model="groupBy"
+                    label="Group by"
+                    :items="[
+                      { title: 'None', value: 'none' },
+                      { title: 'Type', value: 'type' },
+                      { title: 'Team', value: 'team' }
+                    ]"
+                    density="compact"
+                  />
+                </v-card-text>
+              </v-card>
             </v-menu>
           </div>
         </v-col>
@@ -106,7 +116,7 @@
     </div>
 
     <!-- Timeline Container -->
-    <div v-if="(viewMode === 'timeline' || viewMode === 'gantt') && roadmapItems.length > 0" class="timeline-container">
+    <div v-if="viewMode === 'timeline'" class="timeline-container">
       <v-card class="timeline-card">
         <v-card-text class="pa-0">
           <RoadmapTimeline
@@ -126,108 +136,23 @@
     </div>
 
     <!-- List View -->
-    <div v-else-if="viewMode === 'list' && roadmapItems.length > 0" class="list-container">
+    <div v-else-if="viewMode === 'list'" class="list-container">
       <RoadmapList
         :items="roadmapItems"
-        :tasks="linkedTasks"
-        @edit-item="editRoadmapItem"
-        @delete-item="deleteRoadmapItem"
-        @add-task="linkTaskToItem"
-        @remove-task="unlinkTaskFromItem"
+        :tasks="projectTasks"
+        @edit="editRoadmapItem"
+        @delete="deleteRoadmapItem"
+        @duplicate="duplicateRoadmapItem"
+        @link-tasks="openTaskLinkDialog"
       />
     </div>
 
-    <!-- Quick Stats -->
-    <v-row class="mt-6">
-      <v-col cols="12" md="4">
-        <v-card>
-          <v-card-text class="text-center pa-4">
-            <div class="d-flex align-center justify-center mb-2">
-              <v-icon color="primary" size="24" class="mr-2">mdi-flag-checkered</v-icon>
-              <span class="text-h4 font-weight-bold">{{ completedMilestones }}</span>
-            </div>
-            <p class="text-body-2 text-medium-emphasis mb-0">Completed Milestones</p>
-          </v-card-text>
-        </v-card>
-      </v-col>
-      
-      <v-col cols="12" md="4">
-        <v-card>
-          <v-card-text class="text-center pa-4">
-            <div class="d-flex align-center justify-center mb-2">
-              <v-icon color="warning" size="24" class="mr-2">mdi-clock-outline</v-icon>
-              <span class="text-h4 font-weight-bold">{{ activeMilestones }}</span>
-            </div>
-            <p class="text-body-2 text-medium-emphasis mb-0">Active Milestones</p>
-          </v-card-text>
-        </v-card>
-      </v-col>
-      
-      <v-col cols="12" md="4">
-        <v-card>
-          <v-card-text class="text-center pa-4">
-            <div class="d-flex align-center justify-center mb-2">
-              <v-icon color="success" size="24" class="mr-2">mdi-chart-line</v-icon>
-              <span class="text-h4 font-weight-bold">{{ projectProgress }}%</span>
-            </div>
-            <p class="text-body-2 text-medium-emphasis mb-0">Overall Progress</p>
-          </v-card-text>
-        </v-card>
-      </v-col>
-    </v-row>
-
-    <!-- Create/Edit Milestone Dialog -->
-    <MilestoneDialog
-      v-model="showCreateDialog"
-      :milestone="editingMilestone"
-      :project-id="currentProjectId"
-      @milestone-saved="handleMilestoneSaved"
-      @close="handleDialogClose"
-    />
-
-    <!-- Milestone Details Dialog -->
-    <MilestoneDetailsDialog
-      v-model="showDetailsDialog"
-      :milestone="selectedMilestone"
-      :linked-tasks="getLinkedTasks(selectedMilestone?.id)"
-      @milestone-updated="handleMilestoneUpdated"
-      @milestone-deleted="handleMilestoneDeleted"
-      @task-linked="linkTaskToItem"
-      @task-unlinked="unlinkTaskFromItem"
-    />
-
-    <!-- Task Link Dialog -->
-    <TaskLinkDialog
-      v-model="showTaskLinkDialog"
-      :milestone="selectedMilestone"
-      :available-tasks="availableTasks"
-      @tasks-linked="handleTasksLinked"
-    />
-
-    <!-- Loading Overlay -->
-    <v-overlay
-      v-model="loading"
-      class="align-center justify-center"
-      contained
-    >
-      <v-progress-circular
-        color="primary"
-        indeterminate
-        size="64"
-      />
-    </v-overlay>
-
     <!-- Empty State -->
-    <v-card
-      v-if="!loading && roadmapItems.length === 0"
-      class="text-center pa-8 mt-8"
-    >
-      <v-icon size="64" color="medium-emphasis" class="mb-4">
-        mdi-map-outline
-      </v-icon>
-      <h3 class="text-h6 mb-2">No Roadmap Items</h3>
-      <p class="text-body-2 text-medium-emphasis mb-4">
-        Start planning your project by creating milestones and linking tasks.
+    <div v-if="roadmapItems.length === 0" class="empty-state text-center py-12">
+      <v-icon size="80" color="grey-lighten-1" class="mb-4">mdi-map-outline</v-icon>
+      <h2 class="text-h5 mb-2">No roadmap items yet</h2>
+      <p class="text-body-1 text-medium-emphasis mb-4">
+        Create milestones and releases to visualize your project timeline
       </p>
       <v-btn
         color="primary"
@@ -236,7 +161,174 @@
       >
         Create First Milestone
       </v-btn>
-    </v-card>
+    </div>
+
+    <!-- Create/Edit Milestone Dialog -->
+    <v-dialog
+      v-model="showCreateDialog"
+      max-width="600"
+      scrollable
+    >
+      <v-card>
+        <v-card-title>
+          {{ editingMilestone ? 'Edit Milestone' : 'Create New Milestone' }}
+        </v-card-title>
+
+        <v-divider />
+
+        <v-card-text class="pa-4">
+          <v-form ref="milestoneForm" v-model="milestoneFormValid">
+            <v-text-field
+              v-model="milestoneForm.title"
+              label="Title"
+              :rules="[v => !!v || 'Title is required']"
+              required
+            />
+            
+            <v-textarea
+              v-model="milestoneForm.description"
+              label="Description"
+              rows="3"
+            />
+
+            <v-row>
+              <v-col cols="6">
+                <v-select
+                  v-model="milestoneForm.type"
+                  label="Type"
+                  :items="[
+                    { title: 'Milestone', value: 'milestone' },
+                    { title: 'Release', value: 'release' },
+                    { title: 'Phase', value: 'phase' },
+                    { title: 'Deadline', value: 'deadline' }
+                  ]"
+                />
+              </v-col>
+              
+              <v-col cols="6">
+                <v-select
+                  v-model="milestoneForm.status"
+                  label="Status"
+                  :items="[
+                    { title: 'Planned', value: 'planned' },
+                    { title: 'In Progress', value: 'in-progress' },
+                    { title: 'Completed', value: 'completed' },
+                    { title: 'On Hold', value: 'on-hold' }
+                  ]"
+                />
+              </v-col>
+            </v-row>
+
+            <v-row>
+              <v-col cols="6">
+                <v-text-field
+                  v-model="milestoneForm.startDate"
+                  label="Start Date"
+                  type="date"
+                  :rules="[v => !!v || 'Start date is required']"
+                  required
+                />
+              </v-col>
+              
+              <v-col cols="6">
+                <v-text-field
+                  v-model="milestoneForm.endDate"
+                  label="End Date"
+                  type="date"
+                  :rules="[
+                    v => !!v || 'End date is required',
+                    v => !milestoneForm.startDate || new Date(v) > new Date(milestoneForm.startDate) || 'End date must be after start date'
+                  ]"
+                  required
+                />
+              </v-col>
+            </v-row>
+          </v-form>
+        </v-card-text>
+
+        <v-divider />
+
+        <v-card-actions>
+          <v-spacer />
+          <v-btn @click="showCreateDialog = false">Cancel</v-btn>
+          <v-btn
+            color="primary"
+            :loading="saving"
+            @click="saveMilestone"
+          >
+            {{ editingMilestone ? 'Update' : 'Create' }}
+          </v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
+
+    <!-- Milestone Details Dialog -->
+    <v-dialog
+      v-model="showDetailsDialog"
+      max-width="800"
+      scrollable
+    >
+      <v-card v-if="selectedMilestone">
+        <v-card-title class="d-flex align-center">
+          <v-icon class="mr-2">{{ getMilestoneTypeIcon(selectedMilestone.type) }}</v-icon>
+          {{ selectedMilestone.title }}
+          <v-spacer />
+          <v-btn
+            icon="mdi-close"
+            variant="text"
+            @click="showDetailsDialog = false"
+          />
+        </v-card-title>
+
+        <v-divider />
+
+        <v-card-text>
+          <div class="mb-4">
+            <h3 class="text-h6 mb-2">Details</h3>
+            <p>{{ selectedMilestone.description || 'No description' }}</p>
+            
+            <div class="d-flex align-center mb-2">
+              <v-chip :color="getMilestoneTypeColor(selectedMilestone.type)" size="small" class="mr-2">
+                {{ selectedMilestone.type }}
+              </v-chip>
+              <v-chip :color="getStatusColor(selectedMilestone.status)" size="small">
+                {{ selectedMilestone.status }}
+              </v-chip>
+            </div>
+            
+            <p class="text-body-2">
+              <v-icon size="16" class="mr-1">mdi-calendar</v-icon>
+              {{ formatDateRange(selectedMilestone.startDate, selectedMilestone.endDate) }}
+            </p>
+          </div>
+
+          <div v-if="getLinkedTasks(selectedMilestone.id).length > 0">
+            <h3 class="text-h6 mb-2">Linked Tasks ({{ getLinkedTasks(selectedMilestone.id).length }})</h3>
+            <v-list density="compact">
+              <v-list-item
+                v-for="task in getLinkedTasks(selectedMilestone.id)"
+                :key="task.id"
+                :to="`/kanban/${task.projectId}?task=${task.id}`"
+              >
+                <template #prepend>
+                  <v-chip size="x-small" :color="getPriorityColor(task.priority)">
+                    {{ task.priority }}
+                  </v-chip>
+                </template>
+                
+                <v-list-item-title>{{ task.title }}</v-list-item-title>
+                
+                <template #append>
+                  <v-chip size="x-small" :color="getTaskStatusColor(task.columnId)">
+                    {{ getTaskStatusLabel(task.columnId) }}
+                  </v-chip>
+                </template>
+              </v-list-item>
+            </v-list>
+          </div>
+        </v-card-text>
+      </v-card>
+    </v-dialog>
   </div>
 </template>
 
@@ -248,10 +340,6 @@ import { useTasksStore } from '@/stores/tasks'
 import { useUIStore } from '@/stores/ui'
 import RoadmapTimeline from '@/components/roadmap/RoadmapTimeline.vue'
 import RoadmapList from '@/components/roadmap/RoadmapList.vue'
-import RoadmapSettings from '@/components/roadmap/RoadmapSettings.vue'
-import MilestoneDialog from '@/components/roadmap/MilestoneDialog.vue'
-import MilestoneDetailsDialog from '@/components/roadmap/MilestoneDetailsDialog.vue'
-import TaskLinkDialog from '@/components/roadmap/TaskLinkDialog.vue'
 
 // Composables
 const route = useRoute()
@@ -262,6 +350,7 @@ const uiStore = useUIStore()
 
 // Refs
 const timelineRef = ref(null)
+//const milestoneForm = ref(null)
 
 // Local state
 const loading = ref(false)
@@ -275,12 +364,39 @@ const showDetailsDialog = ref(false)
 const showTaskLinkDialog = ref(false)
 const editingMilestone = ref(null)
 const selectedMilestone = ref(null)
+const milestoneFormValid = ref(false)
+const saving = ref(false)
+
+// Form data
+const milestoneForm = ref({
+  title: '',
+  description: '',
+  type: 'milestone',
+  status: 'planned',
+  startDate: '',
+  endDate: '',
+  taskIds: []
+})
 
 // Store getters
 const currentProject = computed(() => projectsStore.currentProject)
-const currentProjectId = computed(() => projectsStore.currentProjectId)
-const roadmapItems = computed(() => tasksStore.getRoadmapByProject(currentProjectId.value))
-const projectTasks = computed(() => tasksStore.getTasksByProject(currentProjectId.value))
+const currentProjectId = computed(() => {
+  return route.params.projectId || projectsStore.currentProjectId
+})
+
+// Get roadmap items for current project
+const roadmapItems = computed(() => {
+  if (!currentProjectId.value) return []
+  console.log('Getting roadmap items for project:', currentProjectId.value)
+  const items = tasksStore.getRoadmapByProject(currentProjectId.value)
+  console.log('Found roadmap items:', items)
+  return items
+})
+
+const projectTasks = computed(() => {
+  if (!currentProjectId.value) return []
+  return tasksStore.getTasksByProject(currentProjectId.value)
+})
 
 // Computed
 const linkedTasks = computed(() => {
@@ -295,7 +411,7 @@ const availableTasks = computed(() => {
 
 const completedMilestones = computed(() => 
   roadmapItems.value.filter(item => {
-    const endDate = new Date(item.end)
+    const endDate = new Date(item.endDate || item.end)
     const now = new Date()
     return endDate < now && getMilestoneProgress(item.id) === 100
   }).length
@@ -303,8 +419,8 @@ const completedMilestones = computed(() =>
 
 const activeMilestones = computed(() => 
   roadmapItems.value.filter(item => {
-    const startDate = new Date(item.start)
-    const endDate = new Date(item.end)
+    const startDate = new Date(item.startDate || item.start)
+    const endDate = new Date(item.endDate || item.end)
     const now = new Date()
     return startDate <= now && endDate >= now
   }).length
@@ -330,20 +446,32 @@ const timeRangeLabel = computed(() =>
   timeRanges.find(r => r.value === timeRange.value)?.label || '6 Months'
 )
 
+// Fix: Map the data correctly for the timeline component
 const timelineData = computed(() => {
-  return roadmapItems.value.map(item => ({
-    id: item.id,
-    content: item.title,
-    start: item.start,
-    end: item.end,
-    type: item.type || 'range',
-    group: getItemGroup(item),
-    className: `milestone-${item.type || 'milestone'}`,
-    style: `background-color: ${currentProject.value?.color || '#1976D2'}`,
-    title: item.content,
-    editable: true,
-    data: item
-  }))
+  console.log('Processing timeline data from roadmap items:', roadmapItems.value)
+  
+  return roadmapItems.value.map(item => {
+    // Map the properties correctly - the sample data uses startDate/endDate
+    const mappedItem = {
+      id: item.id,
+      title: item.title,
+      content: item.title,
+      // Use startDate/endDate from sample data, fallback to start/end
+      startDate: item.startDate || item.start,
+      endDate: item.endDate || item.end,
+      start: item.startDate || item.start,
+      end: item.endDate || item.end,
+      type: item.type || 'milestone',
+      status: item.status || 'planned',
+      progress: item.progress || 0,
+      group: getItemGroup(item),
+      className: `milestone-${item.status || 'planned'}`,
+      taskIds: item.taskIds || []
+    }
+    
+    console.log('Mapped timeline item:', mappedItem)
+    return mappedItem
+  })
 })
 
 const timelineGroups = computed(() => {
@@ -352,8 +480,9 @@ const timelineGroups = computed(() => {
   if (groupBy.value === 'type') {
     return [
       { id: 'milestone', content: 'Milestones' },
-      { id: 'task', content: 'Tasks' },
-      { id: 'release', content: 'Releases' }
+      { id: 'release', content: 'Releases' },
+      { id: 'phase', content: 'Phases' },
+      { id: 'deadline', content: 'Deadlines' }
     ]
   }
   
@@ -368,53 +497,31 @@ const timelineGroups = computed(() => {
   return null
 })
 
-const timelineOptions = computed(() => ({
-  stack: true,
-  showCurrentTime: true,
-  zoomable: true,
-  moveable: true,
-  selectable: true,
-  multiselect: false,
-  editable: {
-    updateTime: true,
-    updateGroup: groupBy.value !== 'none',
-    add: false,
-    remove: false
-  },
-  orientation: 'top',
-  margin: {
-    item: 10,
-    axis: 5
-  },
-  format: {
-    minorLabels: {
-      millisecond: 'SSS',
-      second: 's',
-      minute: 'HH:mm',
-      hour: 'HH:mm',
-      weekday: 'ddd D',
-      day: 'D',
-      week: 'w',
-      month: 'MMM',
-      year: 'YYYY'
+const timelineOptions = computed(() => {
+  const options = {
+    stack: true,
+    showCurrentTime: true,
+    zoomable: true,
+    moveable: true,
+    selectable: true,
+    multiselect: false,
+    editable: {
+      updateTime: true,
+      updateGroup: groupBy.value !== 'none',
+      add: false,
+      remove: false
     },
-    majorLabels: {
-      millisecond: 'HH:mm:ss',
-      second: 'D MMMM HH:mm',
-      minute: 'ddd D MMMM',
-      hour: 'ddd D MMMM',
-      weekday: 'MMMM YYYY',
-      day: 'MMMM YYYY',
-      week: 'MMMM YYYY',
-      month: 'YYYY',
-      year: ''
-    }
-  },
-  // To resolve non-passive event listener warnings, we use a zoomKey.
-  // The user must hold Ctrl to zoom, allowing normal page scroll otherwise.
-  zoomKey: 'ctrlKey',
-  ...getTimeRangeOptions()
-}))
+    orientation: 'top',
+    margin: {
+      item: 10,
+      axis: 5
+    },
+    ...getTimeRangeOptions()
+  }
+  
+  console.log('Timeline options:', options)
+  return options
+})
 
 // Methods
 const getTimeRangeOptions = () => {
@@ -441,12 +548,10 @@ const getTimeRangeOptions = () => {
       break
     default:
       // When 'custom' is selected, vis-timeline will 'fit' the data.
-      // If there's no data, this causes an "Invalid start 'NaN'" error.
       if (roadmapItems.value.length > 0) {
         return {}
       }
       // Fallback for custom range with no items to prevent crash.
-      // We can default to a 6 month view.
       start.setMonth(now.getMonth() - 2)
       end.setMonth(now.getMonth() + 6)
       break
@@ -471,13 +576,15 @@ const getItemGroup = (item) => {
 
 const getMilestoneProgress = (milestoneId) => {
   const milestone = roadmapItems.value.find(item => item.id === milestoneId)
-  if (!milestone || !milestone.taskIds?.length) return 0
+  if (!milestone) return milestone?.progress || 0
+  
+  if (!milestone.taskIds?.length) return milestone.progress || 0
   
   const milestoneTasks = projectTasks.value.filter(task => 
     milestone.taskIds.includes(task.id)
   )
   
-  if (milestoneTasks.length === 0) return 0
+  if (milestoneTasks.length === 0) return milestone.progress || 0
   
   const completedTasks = milestoneTasks.filter(task => task.columnId === 'done')
   return Math.round((completedTasks.length / milestoneTasks.length) * 100)
@@ -499,21 +606,19 @@ const setTimeRange = (range) => {
 }
 
 // Event handlers
-const handleItemMoved = async (item, callback) => {
+const handleItemMoved = async (item) => {
   try {
     loading.value = true
     
+    // Update the roadmap item with new dates
     await tasksStore.updateRoadmapItem(item.id, {
-      start: item.start,
-      end: item.end,
-      group: item.group
+      startDate: item.startDate || item.start,
+      endDate: item.endDate || item.end
     })
     
     uiStore.showSuccess('Milestone updated successfully')
-    callback(null) // Accept the changes
   } catch (error) {
     uiStore.showError('Failed to update milestone: ' + error.message)
-    callback(error) // Reject the changes
   } finally {
     loading.value = false
   }
@@ -521,7 +626,7 @@ const handleItemMoved = async (item, callback) => {
 
 const handleItemUpdated = async (item) => {
   try {
-    await tasksStore.updateRoadmapItem(item.id, item.data)
+    await tasksStore.updateRoadmapItem(item.id, item)
     uiStore.showSuccess('Milestone updated successfully')
   } catch (error) {
     uiStore.showError('Failed to update milestone: ' + error.message)
@@ -543,6 +648,15 @@ const handleGroupSelected = (group) => {
 
 const editRoadmapItem = (item) => {
   editingMilestone.value = { ...item }
+  milestoneForm.value = {
+    title: item.title || '',
+    description: item.description || '',
+    type: item.type || 'milestone',
+    status: item.status || 'planned',
+    startDate: item.startDate || item.start || '',
+    endDate: item.endDate || item.end || '',
+    taskIds: item.taskIds || []
+  }
   showCreateDialog.value = true
 }
 
@@ -557,74 +671,170 @@ const deleteRoadmapItem = async (itemId) => {
   }
 }
 
-const linkTaskToItem = async (milestoneId, taskId) => {
+const duplicateRoadmapItem = async (item) => {
   try {
-    await tasksStore.linkTaskToRoadmap(taskId, milestoneId)
-    uiStore.showSuccess('Task linked to milestone')
+    const startDate = new Date(item.startDate || item.start)
+    const endDate = new Date(item.endDate || item.end)
+    const duration = endDate - startDate
+    
+    // Create new dates starting from the end of the original item
+    const newStart = new Date(endDate)
+    const newEnd = new Date(newStart.getTime() + duration)
+    
+    const newItem = {
+      ...item,
+      id: undefined, // Let the store generate a new ID
+      title: `${item.title} (Copy)`,
+      startDate: newStart.toISOString().split('T')[0],
+      endDate: newEnd.toISOString().split('T')[0],
+      status: 'planned',
+      taskIds: [] // Don't copy linked tasks
+    }
+    
+    await tasksStore.createRoadmapItem(newItem)
+    uiStore.showSuccess('Milestone duplicated successfully')
   } catch (error) {
-    uiStore.showError('Failed to link task: ' + error.message)
+    uiStore.showError('Failed to duplicate milestone: ' + error.message)
   }
 }
 
-const unlinkTaskFromItem = async (milestoneId, taskId) => {
+const saveMilestone = async () => {
+  if (!milestoneForm.value) return
+  
+  saving.value = true
   try {
-    await tasksStore.unlinkTaskFromRoadmap(taskId, milestoneId)
-    uiStore.showSuccess('Task unlinked from milestone')
+    const milestoneData = {
+      ...milestoneForm.value,
+      projectId: currentProjectId.value
+    }
+    
+    if (editingMilestone.value) {
+      await tasksStore.updateRoadmapItem(editingMilestone.value.id, milestoneData)
+      uiStore.showSuccess('Milestone updated successfully')
+    } else {
+      await tasksStore.createRoadmapItem(milestoneData)
+      uiStore.showSuccess('Milestone created successfully')
+    }
+    
+    showCreateDialog.value = false
+    editingMilestone.value = null
+    milestoneForm.value = {
+      title: '',
+      description: '',
+      type: 'milestone',
+      status: 'planned',
+      startDate: '',
+      endDate: '',
+      taskIds: []
+    }
   } catch (error) {
-    uiStore.showError('Failed to unlink task: ' + error.message)
+    uiStore.showError('Failed to save milestone: ' + error.message)
+  } finally {
+    saving.value = false
   }
 }
 
-const handleMilestoneSaved = (milestone) => {
-  uiStore.showSuccess(editingMilestone.value ? 'Milestone updated' : 'Milestone created')
-  showCreateDialog.value = false
-  editingMilestone.value = null
+const openTaskLinkDialog = (milestone) => {
+  selectedMilestone.value = milestone
+  showTaskLinkDialog.value = true
 }
 
-const handleMilestoneUpdated = (milestone) => {
-  uiStore.showSuccess('Milestone updated successfully')
-  showDetailsDialog.value = false
-  selectedMilestone.value = null
-}
-
-const handleMilestoneDeleted = (milestoneId) => {
-  uiStore.showSuccess('Milestone deleted successfully')
-  showDetailsDialog.value = false
-  selectedMilestone.value = null
-}
-
-const handleTasksLinked = (milestoneId, taskIds) => {
-  uiStore.showSuccess(`${taskIds.length} task(s) linked to milestone`)
-  showTaskLinkDialog.value = false
-}
-
-const handleDialogClose = () => {
-  showCreateDialog.value = false
-  editingMilestone.value = null
-}
-
-const exportRoadmap = (format) => {
-  console.log('Export roadmap:', format)
-  uiStore.showInfo('Export feature coming soon')
-}
-
-// Initialize project from route
-const initializeProject = () => {
-  const projectId = route.params.projectId
-  if (projectId && projectId !== currentProjectId.value) {
-    projectsStore.setCurrentProject(projectId)
+// Helper methods
+const getMilestoneTypeColor = (type) => {
+  const colors = {
+    milestone: 'primary',
+    release: 'success',
+    phase: 'info',
+    deadline: 'warning'
   }
+  return colors[type] || 'primary'
+}
+
+const getMilestoneTypeIcon = (type) => {
+  const icons = {
+    milestone: 'mdi-flag',
+    release: 'mdi-rocket-launch',
+    phase: 'mdi-timeline',
+    deadline: 'mdi-clock-alert'
+  }
+  return icons[type] || 'mdi-flag'
+}
+
+const getStatusColor = (status) => {
+  const colors = {
+    planned: 'grey',
+    'in-progress': 'primary',
+    completed: 'success',
+    'on-hold': 'warning',
+    overdue: 'error'
+  }
+  return colors[status] || 'grey'
+}
+
+const getPriorityColor = (priority) => {
+  const colors = {
+    critical: 'error',
+    high: 'warning',
+    medium: 'info',
+    low: 'success'
+  }
+  return colors[priority] || 'info'
+}
+
+const getTaskStatusColor = (columnId) => {
+  const colors = {
+    'backlog': 'grey',
+    'todo': 'blue',
+    'in-progress': 'orange',
+    'review': 'purple',
+    'done': 'green'
+  }
+  return colors[columnId] || 'grey'
+}
+
+const getTaskStatusLabel = (columnId) => {
+  const labels = {
+    'backlog': 'Backlog',
+    'todo': 'To Do',
+    'in-progress': 'In Progress',
+    'review': 'Review',
+    'done': 'Done'
+  }
+  return labels[columnId] || columnId
+}
+
+const formatDateRange = (start, end) => {
+  const startDate = new Date(start).toLocaleDateString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric'
+  })
+  const endDate = new Date(end).toLocaleDateString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric'
+  })
+  return `${startDate} - ${endDate}`
 }
 
 // Lifecycle
 onMounted(() => {
-  initializeProject()
+  // Set current project if provided in route
+  if (route.params.projectId && route.params.projectId !== projectsStore.currentProjectId) {
+    projectsStore.setCurrentProject(route.params.projectId)
+  }
+  
+  // Initialize data
+  tasksStore.initializeData()
+  
+  console.log('Roadmap mounted. Current project:', currentProjectId.value)
+  console.log('Roadmap items:', roadmapItems.value)
 })
 
-// Watchers
-watch(() => route.params.projectId, (newProjectId) => {
-  if (newProjectId && newProjectId !== currentProjectId.value) {
-    projectsStore.setCurrentProject(newProjectId)
+// Watch for project changes
+watch(currentProjectId, (newProjectId) => {
+  if (newProjectId) {
+    console.log('Project changed to:', newProjectId)
   }
 })
 </script>
@@ -632,43 +842,33 @@ watch(() => route.params.projectId, (newProjectId) => {
 <style scoped>
 .roadmap-view {
   height: 100%;
-  overflow: hidden;
 }
 
 .timeline-container {
-  height: calc(100vh - 300px);
-  min-height: 400px;
+  height: 500px;
 }
 
 .timeline-card {
-  height: 100%;
-  overflow: hidden;
+  min-height: 500px;
 }
 
-.list-container {
-  height: calc(100vh - 300px);
-  overflow-y: auto;
+.empty-state {
+  min-height: 400px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
 }
 
 .roadmap-header {
-  flex-shrink: 0;
+  background: rgba(var(--v-theme-surface), 0.8);
+  backdrop-filter: blur(10px);
+  border-radius: 12px;
+  padding: 1rem;
+  margin-bottom: 1rem;
 }
 
-@media (max-width: 960px) {
-  .timeline-container {
-    height: calc(100vh - 220px);
-    min-height: 300px;
-  }
-  
-  .roadmap-header .v-row > .v-col {
-    margin-bottom: 8px;
-  }
-}
-
-@media (max-width: 600px) {
-  .timeline-container {
-    height: calc(100vh - 180px);
-    min-height: 250px;
-  }
+.list-container {
+  min-height: 400px;
 }
 </style>

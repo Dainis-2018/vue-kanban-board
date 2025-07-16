@@ -203,10 +203,8 @@ export const useTasksStore = defineStore('tasks', () => {
       loading.value = true
       const newColumn = {
         id: `column-${Date.now()}`,
-        order: kanbanColumns.value.length + 1,
-        wipLimit: null,
         collapsed: false,
-        hidden: false,
+        order: kanbanColumns.value.length,
         ...columnData
       }
       kanbanColumns.value.push(newColumn)
@@ -219,34 +217,50 @@ export const useTasksStore = defineStore('tasks', () => {
     }
   }
 
-  const updateColumn = (columnId, updates) => {
-    const column = kanbanColumns.value.find(col => col.id === columnId)
-    if (column) {
-      Object.assign(column, updates)
-      return column
+  const updateColumn = async (columnId, updates) => {
+    try {
+      loading.value = true
+      const index = kanbanColumns.value.findIndex(col => col.id === columnId)
+      if (index !== -1) {
+        kanbanColumns.value[index] = {
+          ...kanbanColumns.value[index],
+          ...updates
+        }
+        return kanbanColumns.value[index]
+      }
+      throw new Error('Column not found')
+    } catch (err) {
+      error.value = err.message
+      throw err
+    } finally {
+      loading.value = false
     }
-    throw new Error('Column not found')
   }
 
-  const updateColumnCollapse = (columnId, collapsed) => {
-    const column = kanbanColumns.value.find(col => col.id === columnId)
-    if (column) {
-      column.collapsed = collapsed
-      return column
-    }
-    throw new Error('Column not found')
-  }
-
-  const reorderColumns = (newOrder) => {
-    newOrder.forEach((columnId, index) => {
+  const updateColumnCollapse = async (columnId, collapsed) => {
+    try {
       const column = kanbanColumns.value.find(col => col.id === columnId)
       if (column) {
-        column.order = index + 1
+        column.collapsed = collapsed
       }
-    })
-    
-    // Sort columns by new order
-    kanbanColumns.value.sort((a, b) => a.order - b.order)
+    } catch (err) {
+      error.value = err.message
+      throw err
+    }
+  }
+
+  const reorderColumns = async (columnIds) => {
+    try {
+      // Reorder columns based on the provided array of IDs
+      const reorderedColumns = columnIds.map((id, index) => {
+        const column = kanbanColumns.value.find(col => col.id === id)
+        return { ...column, order: index }
+      })
+      kanbanColumns.value = reorderedColumns
+    } catch (err) {
+      error.value = err.message
+      throw err
+    }
   }
 
   // Roadmap Management
@@ -254,11 +268,14 @@ export const useTasksStore = defineStore('tasks', () => {
     try {
       loading.value = true
       const newItem = {
-        id: `roadmap-${Date.now()}`,
-        taskIds: [],
-        progress: 0,
+        id: `milestone-${Date.now()}`,
+        type: 'milestone',
         status: 'planned',
-        ...itemData
+        progress: 0,
+        taskIds: [],
+        ...itemData,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
       }
       roadmapItems.value.push(newItem)
       return newItem
@@ -277,7 +294,8 @@ export const useTasksStore = defineStore('tasks', () => {
       if (index !== -1) {
         roadmapItems.value[index] = {
           ...roadmapItems.value[index],
-          ...updates
+          ...updates,
+          updatedAt: new Date().toISOString()
         }
         return roadmapItems.value[index]
       }
@@ -296,9 +314,7 @@ export const useTasksStore = defineStore('tasks', () => {
       const index = roadmapItems.value.findIndex(item => item.id === itemId)
       if (index !== -1) {
         roadmapItems.value.splice(index, 1)
-        return true
       }
-      throw new Error('Roadmap item not found')
     } catch (err) {
       error.value = err.message
       throw err
@@ -307,33 +323,30 @@ export const useTasksStore = defineStore('tasks', () => {
     }
   }
 
-  const linkTaskToRoadmap = async (roadmapId, taskId) => {
+  const linkTaskToRoadmap = async (roadmapItemId, taskId) => {
     try {
-      const roadmapItem = roadmapItems.value.find(item => item.id === roadmapId)
-      if (!roadmapItem) throw new Error('Roadmap item not found')
-      
-      if (!roadmapItem.taskIds.includes(taskId)) {
+      const roadmapItem = roadmapItems.value.find(item => item.id === roadmapItemId)
+      if (roadmapItem && !roadmapItem.taskIds?.includes(taskId)) {
+        if (!roadmapItem.taskIds) roadmapItem.taskIds = []
         roadmapItem.taskIds.push(taskId)
+        roadmapItem.updatedAt = new Date().toISOString()
       }
-      
-      return roadmapItem
     } catch (err) {
       error.value = err.message
       throw err
     }
   }
 
-  const unlinkTaskFromRoadmap = async (roadmapId, taskId) => {
+  const unlinkTaskFromRoadmap = async (roadmapItemId, taskId) => {
     try {
-      const roadmapItem = roadmapItems.value.find(item => item.id === roadmapId)
-      if (!roadmapItem) throw new Error('Roadmap item not found')
-      
-      const index = roadmapItem.taskIds.indexOf(taskId)
-      if (index > -1) {
-        roadmapItem.taskIds.splice(index, 1)
+      const roadmapItem = roadmapItems.value.find(item => item.id === roadmapItemId)
+      if (roadmapItem && roadmapItem.taskIds) {
+        const taskIndex = roadmapItem.taskIds.indexOf(taskId)
+        if (taskIndex !== -1) {
+          roadmapItem.taskIds.splice(taskIndex, 1)
+          roadmapItem.updatedAt = new Date().toISOString()
+        }
       }
-      
-      return roadmapItem
     } catch (err) {
       error.value = err.message
       throw err
