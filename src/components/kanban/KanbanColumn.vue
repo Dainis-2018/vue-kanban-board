@@ -1,71 +1,70 @@
+<!-- src/components/kanban/KanbanColumn.vue -->
 <template>
-  <v-card class="kanban-column" elevation="2">
+  <v-card
+    :color="column.color || 'surface'"
+    variant="outlined"
+    class="kanban-column"
+    :class="{ 'column-collapsed': column.collapsed }"
+  >
     <!-- Column Header -->
-    <v-card-title class="d-flex align-center justify-space-between pa-3">
+    <v-card-title class="column-header d-flex align-center justify-space-between">
       <div class="d-flex align-center">
-        <v-icon :color="column.color" class="mr-2">
-          {{ column.icon }}
-        </v-icon>
-        <span class="text-subtitle-1 font-weight-bold">
-          {{ column.title }}
-        </span>
+        <v-btn
+          variant="text"
+          size="small"
+          :icon="column.collapsed ? 'mdi-chevron-right' : 'mdi-chevron-down'"
+          @click="$emit('toggle-collapse', column.id)"
+        />
+        <span class="text-subtitle-1 font-weight-bold">{{ column.title }}</span>
         <v-chip
           size="small"
-          variant="outlined"
+          variant="flat"
+          color="primary"
           class="ml-2"
         >
           {{ tasks.length }}
         </v-chip>
-        <v-chip
-          v-if="column.wipLimit && tasks.length > column.wipLimit"
-          size="small"
-          color="warning"
-          class="ml-2"
-        >
-          Limit: {{ column.wipLimit }}
-        </v-chip>
       </div>
       
-      <v-menu offset-y>
+      <v-menu>
         <template #activator="{ props }">
           <v-btn
             v-bind="props"
-            icon="mdi-dots-vertical"
             variant="text"
             size="small"
+            icon="mdi-dots-vertical"
           />
         </template>
+        
         <v-list density="compact">
-          <v-list-item @click="$emit('add-task', column.id)">
-            <template #prepend>
-              <v-icon>mdi-plus</v-icon>
-            </template>
-            <v-list-item-title>Add Task</v-list-item-title>
-          </v-list-item>
           <v-list-item @click="$emit('edit-column', column)">
             <template #prepend>
               <v-icon>mdi-pencil</v-icon>
             </template>
             <v-list-item-title>Edit Column</v-list-item-title>
           </v-list-item>
+          
+          <v-list-item @click="$emit('delete-column', column.id)">
+            <template #prepend>
+              <v-icon color="error">mdi-delete</v-icon>
+            </template>
+            <v-list-item-title class="text-error">Delete Column</v-list-item-title>
+          </v-list-item>
         </v-list>
       </v-menu>
     </v-card-title>
-    
+
     <v-divider />
 
-    <!-- Tasks Container -->
-    <div class="tasks-container pa-2">
-      <!-- Task List -->
-      <div
-        v-if="tasks.length > 0"
-        class="tasks-list"
-      >
+    <!-- Column Content -->
+    <div v-if="!column.collapsed" class="column-content">
+      <!-- Tasks -->
+      <div v-if="tasks.length > 0" class="tasks-container">
         <v-card
           v-for="task in tasks"
           :key="task.id"
-          class="task-card mb-2"
-          elevation="1"
+          class="task-card ma-2"
+          variant="outlined"
           @click="$emit('task-click', task)"
         >
           <v-card-text class="pa-3">
@@ -76,56 +75,27 @@
                 size="x-small"
                 variant="flat"
               >
+                <v-icon start size="12">{{ getPriorityIcon(task.priority) }}</v-icon>
                 {{ task.priority }}
               </v-chip>
               
-              <v-menu offset-y>
-                <template #activator="{ props }">
-                  <v-btn
-                    v-bind="props"
-                    icon="mdi-dots-horizontal"
-                    variant="text"
-                    size="x-small"
-                    @click.stop
-                  />
-                </template>
-                <v-list density="compact">
-                  <v-list-item @click="$emit('edit-task', task)">
-                    <template #prepend>
-                      <v-icon>mdi-pencil</v-icon>
-                    </template>
-                    <v-list-item-title>Edit Task</v-list-item-title>
-                  </v-list-item>
-                  <v-list-item @click="moveTaskToColumn(task, 'todo')">
-                    <template #prepend>
-                      <v-icon>mdi-arrow-right</v-icon>
-                    </template>
-                    <v-list-item-title>Move to Next</v-list-item-title>
-                  </v-list-item>
-                  <v-list-item @click="$emit('delete-task', task)">
-                    <template #prepend>
-                      <v-icon>mdi-delete</v-icon>
-                    </template>
-                    <v-list-item-title>Delete</v-list-item-title>
-                  </v-list-item>
-                </v-list>
-              </v-menu>
+              <v-chip
+                size="x-small"
+                variant="tonal"
+                color="grey"
+              >
+                #{{ task.id.split('-')[1] }}
+              </v-chip>
             </div>
 
             <!-- Task Title -->
-            <h4 class="text-subtitle-2 font-weight-bold mb-2">
+            <h4 class="text-body-1 font-weight-medium mb-2 task-title">
               {{ task.title }}
             </h4>
 
-            <!-- Task Description -->
-            <p 
-              v-if="task.description && !compact"
-              class="text-body-2 text-medium-emphasis mb-2"
-            >
-              {{ task.description.length > 100 ? 
-                task.description.substring(0, 100) + '...' : 
-                task.description 
-              }}
+            <!-- Task Description (truncated) -->
+            <p v-if="task.description" class="text-body-2 text-medium-emphasis mb-2 task-description">
+              {{ truncateText(task.description, 100) }}
             </p>
 
             <!-- Task Tags -->
@@ -139,45 +109,119 @@
               >
                 {{ tag }}
               </v-chip>
-              <v-chip
-                v-if="task.tags.length > 3"
-                size="x-small"
-                variant="outlined"
-                class="mr-1 mb-1"
-              >
-                +{{ task.tags.length - 3 }}
-              </v-chip>
+              <span v-if="task.tags.length > 3" class="text-caption text-medium-emphasis">
+                +{{ task.tags.length - 3 }} more
+              </span>
             </div>
 
             <!-- Task Footer -->
             <div class="d-flex align-center justify-space-between">
-              <!-- Due Date -->
-              <div v-if="task.dueDate" class="d-flex align-center">
-                <v-icon 
-                  size="16" 
-                  :color="isOverdue(task.dueDate) ? 'error' : 'grey'"
-                  class="mr-1"
-                >
-                  mdi-calendar
-                </v-icon>
-                <span 
-                  class="text-caption"
-                  :class="isOverdue(task.dueDate) ? 'text-error' : ''"
-                >
-                  {{ formatDate(task.dueDate) }}
-                </span>
+              <!-- Left side: Due date, Comments, Attachments -->
+              <div class="d-flex align-center">
+                <!-- Due Date -->
+                <div v-if="task.dueDate" class="d-flex align-center mr-3">
+                  <v-icon 
+                    size="16"
+                    :color="isOverdue(task.dueDate) ? 'error' : 'grey'"
+                    class="mr-1"
+                  >
+                    mdi-calendar
+                  </v-icon>
+                  <span 
+                    class="text-caption"
+                    :class="isOverdue(task.dueDate) ? 'text-error' : ''"
+                  >
+                    {{ formatDate(task.dueDate) }}
+                  </span>
+                </div>
+
+                <!-- Comments -->
+                <div v-if="task.commentsCount > 0" class="d-flex align-center mr-2">
+                  <v-icon size="16" color="grey" class="mr-1">
+                    mdi-comment-outline
+                  </v-icon>
+                  <span class="text-caption">{{ task.commentsCount }}</span>
+                </div>
+
+                <!-- Attachments -->
+                <div v-if="task.attachmentsCount > 0" class="d-flex align-center mr-2">
+                  <v-icon size="16" color="grey" class="mr-1">
+                    mdi-paperclip
+                  </v-icon>
+                  <span class="text-caption">{{ task.attachmentsCount }}</span>
+                </div>
+
+                <!-- Subtasks Progress -->
+                <div v-if="task.subtasksCount > 0" class="d-flex align-center mr-2">
+                  <v-icon size="16" color="grey" class="mr-1">
+                    mdi-checkbox-marked-circle-outline
+                  </v-icon>
+                  <span class="text-caption">
+                    {{ task.completedSubtasks || 0 }}/{{ task.subtasksCount }}
+                  </span>
+                </div>
               </div>
               
-              <!-- Assignee -->
-              <v-avatar
-                v-if="task.assigneeId"
-                size="24"
-                :image="getAssigneeAvatar(task.assigneeId)"
-              >
-                <span v-if="!getAssigneeAvatar(task.assigneeId)" class="text-caption">
-                  {{ getAssigneeName(task.assigneeId)?.charAt(0) }}
-                </span>
-              </v-avatar>
+              <!-- Right side: Assignees -->
+              <div class="d-flex align-center">
+                <!-- Multiple Assignees -->
+                <div v-if="taskAssignees(task).length > 0" class="assignee-avatars">
+                  <v-tooltip
+                    v-for="(assignee, index) in taskAssignees(task).slice(0, 3)"
+                    :key="assignee.id"
+                    :text="assignee.name"
+                    location="top"
+                  >
+                    <template #activator="{ props }">
+                      <v-avatar
+                        v-bind="props"
+                        size="24"
+                        :class="{ 'ml-n2': index > 0 }"
+                        class="assignee-avatar"
+                      >
+                        <v-img
+                          v-if="assignee.avatar"
+                          :src="assignee.avatar"
+                          :alt="assignee.name"
+                        />
+                        <span v-else class="text-caption">
+                          {{ assignee.name?.charAt(0) }}
+                        </span>
+                      </v-avatar>
+                    </template>
+                  </v-tooltip>
+                  
+                  <!-- Show count if more than 3 assignees -->
+                  <v-avatar
+                    v-if="taskAssignees(task).length > 3"
+                    size="24"
+                    color="grey-lighten-1"
+                    class="assignee-avatar ml-n2"
+                  >
+                    <span class="text-caption text-white">
+                      +{{ taskAssignees(task).length - 3 }}
+                    </span>
+                    <v-tooltip activator="parent" location="top">
+                      {{ taskAssignees(task).slice(3).map(a => a.name).join(', ') }}
+                    </v-tooltip>
+                  </v-avatar>
+                </div>
+                
+                <!-- No assignees placeholder -->
+                <v-avatar
+                  v-else
+                  size="24"
+                  color="grey-lighten-3"
+                  class="assignee-avatar"
+                >
+                  <v-icon size="16" color="grey">
+                    mdi-account-plus
+                  </v-icon>
+                  <v-tooltip activator="parent" location="top">
+                    No assignees
+                  </v-tooltip>
+                </v-avatar>
+              </div>
             </div>
           </v-card-text>
         </v-card>
@@ -185,7 +229,7 @@
 
       <!-- Empty State -->
       <div v-else class="empty-column">
-        <div class="empty-content">
+        <div class="empty-content text-center pa-4">
           <v-icon size="48" color="grey-lighten-2" class="mb-2">
             mdi-clipboard-text-outline
           </v-icon>
@@ -196,7 +240,7 @@
       </div>
 
       <!-- Add Task Button -->
-      <div class="add-task-section">
+      <div class="add-task-section pa-2">
         <v-btn
           variant="outlined"
           block
@@ -225,19 +269,18 @@ const props = defineProps({
     type: Array,
     default: () => []
   },
-  compact: {
-    type: Boolean,
-    default: false
+  users: {
+    type: Array,
+    default: () => []
   }
 })
 
-const emit = defineEmits([
-  'task-move', 
-  'task-click', 
-  'add-task', 
-  'edit-task', 
-  'delete-task', 
-  'edit-column'
+defineEmits([
+  'task-click',
+  'add-task',
+  'toggle-collapse',
+  'edit-column',
+  'delete-column'
 ])
 
 const projectsStore = useProjectsStore()
@@ -246,29 +289,50 @@ const projectsStore = useProjectsStore()
 const getPriorityColor = (priority) => {
   const colors = {
     critical: 'error',
-    high: 'warning', 
+    high: 'warning',
     medium: 'info',
     low: 'success'
   }
   return colors[priority] || 'grey'
 }
 
-const getAssigneeAvatar = (userId) => {
-  const user = projectsStore.getUserById(userId)
-  return user?.avatar || ''
+const getPriorityIcon = (priority) => {
+  const icons = {
+    critical: 'mdi-alert-circle',
+    high: 'mdi-arrow-up-bold',
+    medium: 'mdi-minus',
+    low: 'mdi-arrow-down-bold'
+  }
+  return icons[priority] || 'mdi-circle'
 }
 
-const getAssigneeName = (userId) => {
-  const user = projectsStore.getUserById(userId)
-  return user?.name || ''
+const taskAssignees = (task) => {
+  if (!task) return []
+  
+  // Support both multiple assignees (assigneeIds) and single assignee (assigneeId)
+  const assigneeIds = task.assigneeIds && task.assigneeIds.length > 0 
+    ? task.assigneeIds 
+    : (task.assigneeId ? [task.assigneeId] : [])
+  
+  return assigneeIds
+    .map(id => props.users.find(user => user.id === id))
+    .filter(Boolean)
 }
 
 const formatDate = (dateString) => {
   if (!dateString) return ''
-  return new Date(dateString).toLocaleDateString('en-US', {
-    month: 'short',
-    day: 'numeric'
-  })
+  const date = new Date(dateString)
+  const now = new Date()
+  const diffTime = date.getTime() - now.getTime()
+  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
+  
+  if (diffDays === 0) return 'Today'
+  if (diffDays === 1) return 'Tomorrow'
+  if (diffDays === -1) return 'Yesterday'
+  if (diffDays > 0 && diffDays <= 7) return `${diffDays} days`
+  if (diffDays < 0 && diffDays >= -7) return `${Math.abs(diffDays)} days ago`
+  
+  return date.toLocaleDateString()
 }
 
 const isOverdue = (dueDate) => {
@@ -276,112 +340,134 @@ const isOverdue = (dueDate) => {
   return new Date(dueDate) < new Date()
 }
 
-const moveTaskToColumn = (task, targetColumnId) => {
-  emit('task-move', {
-    taskId: task.id,
-    newColumnId: targetColumnId,
-    newIndex: 0
-  })
+const truncateText = (text, maxLength) => {
+  if (!text || text.length <= maxLength) return text
+  return text.substring(0, maxLength) + '...'
 }
 </script>
 
 <style scoped>
 .kanban-column {
-  min-width: 300px;
-  max-width: 350px;
-  height: 100%;
+  min-height: 200px;
+  width: 300px;
   display: flex;
   flex-direction: column;
+}
+
+.column-collapsed {
+  width: 60px;
+}
+
+.column-header {
+  flex-shrink: 0;
+  min-height: 64px;
+  padding: 12px 16px;
+}
+
+.column-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
 }
 
 .tasks-container {
-  flex-grow: 1;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-}
-
-.tasks-list {
-  flex-grow: 1;
+  flex: 1;
   overflow-y: auto;
-  padding-right: 4px;
-}
-
-.tasks-list::-webkit-scrollbar {
-  width: 4px;
-}
-
-.tasks-list::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-.tasks-list::-webkit-scrollbar-thumb {
-  background: rgba(var(--v-theme-on-surface), 0.2);
-  border-radius: 2px;
+  min-height: 0;
 }
 
 .task-card {
   cursor: pointer;
   transition: all 0.2s ease;
-  border: 1px solid rgba(var(--v-theme-on-surface), 0.12);
+  border-radius: 8px;
 }
 
 .task-card:hover {
   transform: translateY(-1px);
-  box-shadow: 0 4px 8px rgba(0,0,0,0.1);
-  border-color: rgba(var(--v-theme-primary), 0.3);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.task-title {
+  line-height: 1.2;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.task-description {
+  line-height: 1.3;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.assignee-avatars {
+  display: flex;
+  align-items: center;
+}
+
+.assignee-avatar {
+  border: 2px solid white;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+}
+
+.assignee-avatar:first-child {
+  margin-left: 0;
 }
 
 .empty-column {
-  flex-grow: 1;
+  flex: 1;
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 24px;
   min-height: 120px;
-}
-
-.empty-content {
-  text-align: center;
-  opacity: 0.6;
 }
 
 .add-task-section {
   flex-shrink: 0;
-  margin-top: 8px;
-  border-top: 1px solid rgba(var(--v-theme-on-surface), 0.12);
-  padding-top: 8px;
-  background: rgba(var(--v-theme-surface-variant), 0.1);
 }
 
 .add-task-btn {
-  opacity: 0.7;
-  transition: opacity 0.2s ease;
+  border-style: dashed !important;
+  transition: all 0.2s ease;
 }
 
-.kanban-column:hover .add-task-btn {
-  opacity: 1;
+.add-task-btn:hover {
+  background-color: rgba(var(--v-theme-primary), 0.04);
+  border-style: solid !important;
 }
 
-/* Responsive Design */
-@media (max-width: 1200px) {
+/* Scrollbar styling */
+.tasks-container::-webkit-scrollbar {
+  width: 6px;
+}
+
+.tasks-container::-webkit-scrollbar-track {
+  background: rgba(var(--v-theme-surface-variant), 0.5);
+  border-radius: 3px;
+}
+
+.tasks-container::-webkit-scrollbar-thumb {
+  background: rgba(var(--v-theme-on-surface), 0.3);
+  border-radius: 3px;
+}
+
+.tasks-container::-webkit-scrollbar-thumb:hover {
+  background: rgba(var(--v-theme-on-surface), 0.5);
+}
+
+@media (max-width: 768px) {
   .kanban-column {
-    min-width: 250px;
-    max-width: 300px;
+    width: 280px;
   }
-}
-
-@media (max-width: 960px) {
-  .kanban-column {
-    min-width: 220px;
-    max-width: 280px;
-  }
-}
-
-@media (max-width: 600px) {
-  .kanban-column {
-    min-width: 280px;
-    max-width: 100%;
+  
+  .column-collapsed {
+    width: 50px;
   }
 }
 </style>

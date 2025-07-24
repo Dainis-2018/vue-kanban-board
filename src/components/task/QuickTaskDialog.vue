@@ -1,8 +1,9 @@
+<!-- src/components/task/QuickTaskDialog.vue -->
 <template>
   <v-dialog
     :model-value="modelValue"
     @update:model-value="$emit('update:modelValue', $event)"
-    max-width="500px"
+    max-width="600px"
     persistent
   >
     <v-card>
@@ -27,14 +28,16 @@
           />
 
           <!-- Task Description -->
-          <v-textarea
-            v-model="task.description"
-            label="Description"
-            placeholder="Enter task description..."
-            variant="outlined"
-            rows="3"
-            class="mb-3"
-          />
+          <div class="mb-3">
+            <v-label class="text-subtitle-2 font-weight-medium mb-2 d-block">
+              Description
+            </v-label>
+            <RichTextEditor
+              v-model="task.description"
+              placeholder="Enter task description..."
+              min-height="100px"
+            />
+          </div>
 
           <v-row>
             <!-- Column -->
@@ -71,15 +74,40 @@
           </v-row>
 
           <v-row>
-            <!-- Assignee -->
+            <!-- Multiple Assignees -->
             <v-col cols="12" md="6">
               <v-select
-                v-model="task.assigneeId"
+                v-model="task.assigneeIds"
                 :items="assigneeOptions"
-                label="Assignee"
+                label="Assignees"
                 variant="outlined"
+                multiple
+                chips
+                closable-chips
                 clearable
+                :menu-props="{ maxHeight: 300 }"
               >
+                <template #chip="{ props, item }">
+                  <v-chip
+                    v-bind="props"
+                    size="small"
+                    color="primary"
+                    variant="flat"
+                  >
+                    <v-avatar start size="20">
+                      <v-img
+                        v-if="item.raw.avatar"
+                        :src="item.raw.avatar"
+                        :alt="item.raw.name"
+                      />
+                      <span v-else class="text-caption">
+                        {{ item.raw.name?.charAt(0) }}
+                      </span>
+                    </v-avatar>
+                    {{ item.raw.name }}
+                  </v-chip>
+                </template>
+                
                 <template #item="{ props, item }">
                   <v-list-item v-bind="props">
                     <template #prepend>
@@ -90,10 +118,12 @@
                           :alt="item.raw.name"
                         />
                         <span v-else class="text-caption">
-                          {{ item.raw.name.charAt(0) }}
+                          {{ item.raw.name?.charAt(0) }}
                         </span>
                       </v-avatar>
                     </template>
+                    <v-list-item-title>{{ item.raw.name }}</v-list-item-title>
+                    <v-list-item-subtitle>{{ item.raw.role }}</v-list-item-subtitle>
                   </v-list-item>
                 </template>
               </v-select>
@@ -132,13 +162,12 @@
           <!-- Tags -->
           <v-combobox
             v-model="task.tags"
+            :items="availableTags"
             label="Tags"
-            placeholder="Add tags..."
             variant="outlined"
             multiple
             chips
             closable-chips
-            :items="availableTags"
             class="mb-3"
           >
             <template #chip="{ props, item }">
@@ -176,9 +205,10 @@
 </template>
 
 <script setup>
-import { ref, computed, watch, inject } from 'vue'
+import { ref, computed, watch, nextTick } from 'vue'
 import { useTasksStore } from '@/stores/tasks'
 import { useUIStore } from '@/stores/ui'
+import RichTextEditor from '@/components/editor/RichTextEditor.vue'
 
 const props = defineProps({
   modelValue: {
@@ -203,7 +233,7 @@ const props = defineProps({
   }
 })
 
-const emit = defineEmits(['update:modelValue'])
+const emit = defineEmits(['update:modelValue', 'task-created'])
 
 const tasksStore = useTasksStore()
 const uiStore = useUIStore()
@@ -219,7 +249,7 @@ const task = ref({
   description: '',
   columnId: '',
   priority: 'medium',
-  assigneeId: null,
+  assigneeIds: [], // Multiple assignees
   dueDate: null,
   tags: []
 })
@@ -249,7 +279,8 @@ const assigneeOptions = computed(() =>
     title: user.name,
     value: user.id,
     avatar: user.avatar,
-    name: user.name
+    name: user.name,
+    role: user.role
   }))
 )
 
@@ -291,7 +322,7 @@ const resetForm = () => {
     description: '',
     columnId: props.defaultColumnId || (props.columns[0]?.id || ''),
     priority: 'medium',
-    assigneeId: null,
+    assigneeIds: [],
     dueDate: null,
     tags: []
   }
@@ -302,7 +333,8 @@ const resetForm = () => {
 }
 
 const handleSubmit = async () => {
-  if (!form.value.validate()) return
+  const { valid: isValid } = await form.value.validate()
+  if (!isValid) return
 
   loading.value = true
   
@@ -310,18 +342,20 @@ const handleSubmit = async () => {
     const taskData = {
       ...task.value,
       projectId: props.projectId,
-      id: `task-${Date.now()}`, // Generate unique ID
+      id: `task-${Date.now()}`,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
       order: 0 // Will be set by the store
     }
 
-    await tasksStore.createTask(taskData)
+    const createdTask = await tasksStore.createTask(taskData)
     
     uiStore.showSuccess('Task created successfully')
+    emit('task-created', createdTask)
     emit('update:modelValue', false)
     resetForm()
   } catch (error) {
+    console.error('Error creating task:', error)
     uiStore.showError('Failed to create task: ' + error.message)
   } finally {
     loading.value = false
@@ -337,6 +371,11 @@ const handleCancel = () => {
 watch(() => props.modelValue, (isOpen) => {
   if (isOpen) {
     resetForm()
+    nextTick(() => {
+      if (form.value) {
+        form.value.resetValidation()
+      }
+    })
   }
 })
 
@@ -347,3 +386,31 @@ watch(() => props.columns, (newColumns) => {
   }
 }, { immediate: true })
 </script>
+
+<style scoped>
+:deep(.v-text-field .v-input__control) {
+  min-height: 56px;
+}
+
+:deep(.v-textarea .v-input__control) {
+  min-height: auto;
+}
+
+:deep(.v-select .v-input__control) {
+  min-height: 56px;
+}
+
+:deep(.v-chip-group .v-chip) {
+  margin: 2px;
+}
+
+.v-select :deep(.v-field__input) {
+  min-height: 40px;
+}
+
+@media (max-width: 600px) {
+  :deep(.v-dialog .v-card) {
+    margin: 12px;
+  }
+}
+</style>
