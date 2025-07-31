@@ -104,8 +104,9 @@
                     size="small"
                     color="primary"
                     variant="flat"
+                    class="assignee-chip"
                   >
-                    <v-avatar start size="20">
+                    <v-avatar size="20" class="mr-1">
                       <v-img
                         v-if="item.raw.avatar"
                         :src="item.raw.avatar"
@@ -133,8 +134,6 @@
                         </span>
                       </v-avatar>
                     </template>
-                    <v-list-item-title>{{ item.raw.name }}</v-list-item-title>
-                    <v-list-item-subtitle>{{ item.raw.role }}</v-list-item-subtitle>
                   </v-list-item>
                 </template>
               </v-select>
@@ -143,26 +142,19 @@
 
           <v-row class="mb-4">
             <v-col cols="12" md="6">
-              <v-menu
-                v-model="showDatePicker"
-                :close-on-content-click="false"
-                transition="scale-transition"
-                offset-y
-                min-width="auto"
-              >
+              <v-menu v-model="showDatePicker" :close-on-content-click="false">
                 <template #activator="{ props }">
                   <v-text-field
                     v-bind="props"
-                    v-model="formattedDueDate"
+                    :model-value="formattedDueDate"
                     label="Due Date"
-                    prepend-inner-icon="mdi-calendar"
                     variant="outlined"
                     readonly
+                    append-inner-icon="mdi-calendar"
                     clearable
                     @click:clear="editTask.dueDate = null"
                   />
                 </template>
-                
                 <v-date-picker
                   v-model="editTask.dueDate"
                   @update:model-value="showDatePicker = false"
@@ -173,12 +165,12 @@
             <v-col cols="12" md="6">
               <v-combobox
                 v-model="editTask.tags"
+                :items="availableTags"
                 label="Tags"
                 variant="outlined"
                 multiple
                 chips
                 closable-chips
-                :items="availableTags"
               />
             </v-col>
           </v-row>
@@ -253,8 +245,9 @@
                     size="small"
                     variant="outlined"
                     color="primary"
+                    class="assignee-chip"
                   >
-                    <v-avatar start size="20">
+                    <v-avatar size="20" class="mr-1">
                       <v-img
                         v-if="assignee.avatar"
                         :src="assignee.avatar"
@@ -287,15 +280,6 @@
                   >
                     {{ formatDate(currentTask.dueDate) }}
                   </span>
-                  <v-chip
-                    v-if="isOverdue(currentTask.dueDate)"
-                    color="error"
-                    size="x-small"
-                    variant="flat"
-                    class="ml-2"
-                  >
-                    Overdue
-                  </v-chip>
                 </div>
               </div>
             </v-col>
@@ -303,7 +287,7 @@
 
           <!-- Tags -->
           <div v-if="currentTask.tags && currentTask.tags.length > 0" class="mb-4">
-            <h4 class="text-subtitle-1 mb-2">Tags</h4>
+            <h4 class="text-subtitle-1 mb-1">Tags</h4>
             <div class="d-flex flex-wrap ga-1">
               <v-chip
                 v-for="tag in currentTask.tags"
@@ -315,51 +299,26 @@
               </v-chip>
             </div>
           </div>
-
-          <!-- Task Stats -->
-          <div class="mb-4">
-            <h4 class="text-subtitle-1 mb-2">Task Statistics</h4>
-            <v-row>
-              <v-col cols="6" md="3">
-                <div class="text-center pa-2 border rounded">
-                  <div class="text-h6">{{ currentTask.commentsCount || 0 }}</div>
-                  <div class="text-caption text-medium-emphasis">Comments</div>
-                </div>
-              </v-col>
-              <v-col cols="6" md="3">
-                <div class="text-center pa-2 border rounded">
-                  <div class="text-h6">{{ currentTask.attachmentsCount || 0 }}</div>
-                  <div class="text-caption text-medium-emphasis">Attachments</div>
-                </div>
-              </v-col>
-              <v-col cols="6" md="3">
-                <div class="text-center pa-2 border rounded">
-                  <div class="text-h6">{{ currentTask.subtasksCount || 0 }}</div>
-                  <div class="text-caption text-medium-emphasis">Subtasks</div>
-                </div>
-              </v-col>
-              <v-col cols="6" md="3">
-                <div class="text-center pa-2 border rounded">
-                  <div class="text-h6">{{ Math.round(((currentTask.completedSubtasks || 0) / Math.max(currentTask.subtasksCount || 1, 1)) * 100) }}%</div>
-                  <div class="text-caption text-medium-emphasis">Progress</div>
-                </div>
-              </v-col>
-            </v-row>
-          </div>
         </div>
       </v-card-text>
       
-      <v-divider />
-      
-      <v-card-actions class="pa-4">
-        <div v-if="isEditing" class="d-flex align-center w-100">
+      <v-card-actions class="px-6 pb-4">
+        <div v-if="isEditing" class="d-flex w-100">
+          <v-btn
+            variant="text"
+            color="error"
+            prepend-icon="mdi-delete"
+            @click="confirmDelete"
+          >
+            Delete Task
+          </v-btn>
+          <v-spacer />
           <v-btn
             variant="text"
             @click="cancelEditing"
           >
             Cancel
           </v-btn>
-          <v-spacer />
           <v-btn
             color="primary"
             :loading="saving"
@@ -370,7 +329,7 @@
           </v-btn>
         </div>
         
-        <div v-else class="d-flex align-center w-100">
+        <div v-else class="d-flex w-100">
           <v-btn
             variant="text"
             color="error"
@@ -491,7 +450,7 @@ const taskAssignees = computed(() => {
     .filter(Boolean)
 })
 
-// Methods
+// Helper methods
 const getPriorityColor = (priority) => {
   const colors = {
     critical: 'error',
@@ -505,20 +464,20 @@ const getPriorityColor = (priority) => {
 const getPriorityIcon = (priority) => {
   const icons = {
     critical: 'mdi-alert-circle',
-    high: 'mdi-arrow-up-bold',
+    high: 'mdi-chevron-up',
     medium: 'mdi-minus',
-    low: 'mdi-arrow-down-bold'
+    low: 'mdi-chevron-down'
   }
-  return icons[priority] || 'mdi-circle'
+  return icons[priority] || 'mdi-minus'
 }
 
 const getColumnColor = (columnId) => {
-  const column = props.columns.find(c => c.id === columnId)
-  return column?.color || 'primary'
+  const column = props.columns.find(col => col.id === columnId)
+  return column?.color || 'grey'
 }
 
 const getColumnTitle = (columnId) => {
-  const column = props.columns.find(c => c.id === columnId)
+  const column = props.columns.find(col => col.id === columnId)
   return column?.title || 'Unknown'
 }
 
@@ -527,18 +486,22 @@ const formatDate = (dateString) => {
   return new Date(dateString).toLocaleDateString()
 }
 
-const formatTimeAgo = (dateString) => {
-  if (!dateString) return ''
-  const date = new Date(dateString)
+const formatTimeAgo = (timestamp) => {
+  if (!timestamp) return ''
   const now = new Date()
-  const diffMs = now - date
-  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24))
-  
-  if (diffDays === 0) return 'today'
-  if (diffDays === 1) return 'yesterday'
-  if (diffDays < 7) return `${diffDays} days ago`
-  if (diffDays < 30) return `${Math.floor(diffDays / 7)} weeks ago`
-  return `${Math.floor(diffDays / 30)} months ago`
+  const date = new Date(timestamp)
+  const diff = now - date
+  const minutes = Math.floor(diff / (1000 * 60))
+  const hours = Math.floor(diff / (1000 * 60 * 60))
+  const days = Math.floor(diff / (1000 * 60 * 60 * 24))
+
+  if (minutes < 60) {
+    return `${minutes}m ago`
+  } else if (hours < 24) {
+    return `${hours}h ago`
+  } else {
+    return `${days}d ago`
+  }
 }
 
 const isOverdue = (dueDate) => {
@@ -640,6 +603,16 @@ watch(() => props.modelValue, (isOpen) => {
 
 .rounded {
   border-radius: 4px;
+}
+
+/* Fix for assignee avatar cutting issue */
+.assignee-chip {
+  padding-left: 8px !important;
+}
+
+.assignee-chip .v-avatar {
+  margin-left: 0 !important;
+  margin-right: 4px !important;
 }
 
 @media (max-width: 600px) {

@@ -4,61 +4,62 @@
     :model-value="modelValue"
     @update:model-value="$emit('update:modelValue', $event)"
     max-width="600px"
-    persistent
+    scrollable
   >
     <v-card>
-      <v-card-title class="text-h6">
-        <v-icon class="mr-2">mdi-plus</v-icon>
-        Create New Task
+      <v-card-title class="d-flex align-center justify-space-between">
+        <div class="d-flex align-center">
+          <v-icon class="mr-2">mdi-plus-circle</v-icon>
+          <span class="text-h6">Create New Task</span>
+        </div>
+        
+        <v-btn
+          variant="text"
+          size="small"
+          icon="mdi-close"
+          @click="handleCancel"
+        />
       </v-card-title>
       
       <v-divider />
       
-      <v-card-text class="pt-4">
-        <v-form ref="form" v-model="valid" @submit.prevent="handleSubmit">
-          <!-- Task Title -->
+      <v-card-text class="pa-6">
+        <v-form ref="form" v-model="valid">
           <v-text-field
             v-model="task.title"
             label="Task Title"
-            placeholder="Enter task title..."
             variant="outlined"
             :rules="[rules.required]"
-            autofocus
-            class="mb-3"
+            class="mb-4"
           />
 
-          <!-- Task Description -->
-          <div class="mb-3">
+          <div class="mb-4">
             <v-label class="text-subtitle-2 font-weight-medium mb-2 d-block">
               Description
             </v-label>
             <RichTextEditor
               v-model="task.description"
               placeholder="Enter task description..."
-              min-height="100px"
+              min-height="120px"
             />
           </div>
 
-          <v-row>
-            <!-- Column -->
+          <v-row class="mb-3">
             <v-col cols="12" md="6">
               <v-select
                 v-model="task.columnId"
                 :items="columnOptions"
-                label="Column"
+                label="Status"
                 variant="outlined"
-                :rules="[rules.required]"
               />
             </v-col>
-
-            <!-- Priority -->
+            
             <v-col cols="12" md="6">
               <v-select
                 v-model="task.priority"
                 :items="priorityOptions"
                 label="Priority"
                 variant="outlined"
-                :rules="[rules.required]"
               >
                 <template #item="{ props, item }">
                   <v-list-item v-bind="props">
@@ -73,7 +74,7 @@
             </v-col>
           </v-row>
 
-          <v-row>
+          <v-row class="mb-3">
             <!-- Multiple Assignees -->
             <v-col cols="12" md="6">
               <v-select
@@ -93,8 +94,9 @@
                     size="small"
                     color="primary"
                     variant="flat"
+                    class="assignee-chip"
                   >
-                    <v-avatar start size="20">
+                    <v-avatar size="20" class="mr-1">
                       <v-img
                         v-if="item.raw.avatar"
                         :src="item.raw.avatar"
@@ -122,35 +124,25 @@
                         </span>
                       </v-avatar>
                     </template>
-                    <v-list-item-title>{{ item.raw.name }}</v-list-item-title>
-                    <v-list-item-subtitle>{{ item.raw.role }}</v-list-item-subtitle>
                   </v-list-item>
                 </template>
               </v-select>
             </v-col>
-
-            <!-- Due Date -->
+            
             <v-col cols="12" md="6">
-              <v-menu
-                v-model="showDatePicker"
-                :close-on-content-click="false"
-                transition="scale-transition"
-                offset-y
-                min-width="auto"
-              >
+              <v-menu v-model="showDatePicker" :close-on-content-click="false">
                 <template #activator="{ props }">
                   <v-text-field
                     v-bind="props"
-                    v-model="formattedDueDate"
+                    :model-value="formattedDueDate"
                     label="Due Date"
-                    prepend-inner-icon="mdi-calendar"
                     variant="outlined"
                     readonly
+                    append-inner-icon="mdi-calendar"
                     clearable
                     @click:clear="task.dueDate = null"
                   />
                 </template>
-                
                 <v-date-picker
                   v-model="task.dueDate"
                   @update:model-value="showDatePicker = false"
@@ -159,7 +151,6 @@
             </v-col>
           </v-row>
 
-          <!-- Tags -->
           <v-combobox
             v-model="task.tags"
             :items="availableTags"
@@ -169,6 +160,7 @@
             chips
             closable-chips
             class="mb-3"
+            @update:model-value="updateTags"
           >
             <template #chip="{ props, item }">
               <v-chip
@@ -176,7 +168,7 @@
                 size="small"
                 variant="outlined"
               >
-                {{ item }}
+                {{ getTagText(item) }}
               </v-chip>
             </template>
           </v-combobox>
@@ -309,11 +301,11 @@ const getPriorityColor = (priority) => {
 const getPriorityIcon = (priority) => {
   const icons = {
     critical: 'mdi-alert-circle',
-    high: 'mdi-arrow-up-bold',
+    high: 'mdi-chevron-up',
     medium: 'mdi-minus',
-    low: 'mdi-arrow-down-bold'
+    low: 'mdi-chevron-down'
   }
-  return icons[priority] || 'mdi-circle'
+  return icons[priority] || 'mdi-minus'
 }
 
 const resetForm = () => {
@@ -332,7 +324,37 @@ const resetForm = () => {
   }
 }
 
+const addTag = (tagItem) => {
+  const tagValue = typeof tagItem === 'string' ? tagItem : tagItem.title || tagItem.value || tagItem
+  if (tagValue && !task.value.tags.includes(tagValue)) {
+    task.value.tags.push(tagValue)
+  }
+}
+
+const removeTag = (tagItem) => {
+  const tagValue = typeof tagItem === 'string' ? tagItem : tagItem.title || tagItem.value || tagItem
+  const index = task.value.tags.indexOf(tagValue)
+  if (index > -1) {
+    task.value.tags.splice(index, 1)
+  }
+}
+
+const getTagText = (item) => {
+  return typeof item === 'string' ? item : item.title || item.value || String(item)
+}
+
+const updateTags = (newTags) => {
+  // Ensure all tags are simple strings
+  task.value.tags = newTags.map(tag => getTagText(tag))
+}
+
+const handleCancel = () => {
+  emit('update:modelValue', false)
+}
+
 const handleSubmit = async () => {
+  if (!form.value) return
+  
   const { valid: isValid } = await form.value.validate()
   if (!isValid) return
 
@@ -342,17 +364,18 @@ const handleSubmit = async () => {
     const taskData = {
       ...task.value,
       projectId: props.projectId,
-      id: `task-${Date.now()}`,
       createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-      order: 0 // Will be set by the store
+      updatedAt: new Date().toISOString()
     }
-
-    const createdTask = await tasksStore.createTask(taskData)
+    
+    const newTask = await tasksStore.createTask(taskData)
     
     uiStore.showSuccess('Task created successfully')
-    emit('task-created', createdTask)
+    emit('task-created', newTask)
     emit('update:modelValue', false)
+    
+    // Reset form after successful creation
+    await nextTick()
     resetForm()
   } catch (error) {
     console.error('Error creating task:', error)
@@ -362,27 +385,17 @@ const handleSubmit = async () => {
   }
 }
 
-const handleCancel = () => {
-  emit('update:modelValue', false)
-  resetForm()
-}
-
 // Watch for dialog open/close
 watch(() => props.modelValue, (isOpen) => {
   if (isOpen) {
     resetForm()
-    nextTick(() => {
-      if (form.value) {
-        form.value.resetValidation()
-      }
-    })
   }
 })
 
-// Set default column when columns change
-watch(() => props.columns, (newColumns) => {
-  if (newColumns.length > 0 && !task.value.columnId) {
-    task.value.columnId = props.defaultColumnId || newColumns[0].id
+// Initialize default column
+watch(() => props.defaultColumnId, (newValue) => {
+  if (newValue && task.value.columnId === '') {
+    task.value.columnId = newValue
   }
 }, { immediate: true })
 </script>
@@ -400,12 +413,14 @@ watch(() => props.columns, (newColumns) => {
   min-height: 56px;
 }
 
-:deep(.v-chip-group .v-chip) {
-  margin: 2px;
+/* Fix for assignee avatar cutting issue */
+.assignee-chip {
+  padding-left: 8px !important;
 }
 
-.v-select :deep(.v-field__input) {
-  min-height: 40px;
+.assignee-chip .v-avatar {
+  margin-left: 0 !important;
+  margin-right: 4px !important;
 }
 
 @media (max-width: 600px) {

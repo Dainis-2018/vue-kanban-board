@@ -1,115 +1,103 @@
+<!-- src/views/Roadmap.vue -->
 <template>
-  <div class="roadmap-view">
-    <!-- Header Controls -->
-    <div class="roadmap-header mb-6">
+  <div class="roadmap-view pa-4">
+    <!-- Header -->
+    <div class="roadmap-header mb-4">
       <v-row align="center">
         <v-col cols="12" md="6">
           <div class="d-flex align-center">
-            <v-avatar
-              v-if="currentProject"
-              :color="currentProject.color"
-              size="40"
-              class="mr-3"
-            >
-              <span class="text-white text-h6">
-                {{ currentProject.name.charAt(0) }}
-              </span>
-            </v-avatar>
-            
+            <v-icon size="28" class="mr-3">mdi-map</v-icon>
             <div>
-              <h1 class="text-h5 font-weight-bold">
-                {{ currentProject?.name || 'Project' }} Roadmap
-              </h1>
+              <h1 class="text-h5 font-weight-bold">Roadmap</h1>
               <p class="text-body-2 text-medium-emphasis mb-0">
-                {{ activeMilestones }} active • {{ completedMilestones }} completed • {{ projectProgress }}% overall progress
+                {{ currentProject?.name || 'Project Timeline' }}
               </p>
             </div>
           </div>
         </v-col>
         
-        <v-col cols="12" md="6" class="text-md-right">
-          <div class="d-flex align-center justify-end flex-wrap ga-2">
+        <v-col cols="12" md="6">
+          <div class="d-flex align-center justify-end ga-2">
             <!-- View Mode Toggle -->
             <v-btn-toggle
               v-model="viewMode"
-              variant="outlined"
-              size="small"
               mandatory
+              variant="outlined"
+              divided
             >
               <v-btn value="timeline" icon="mdi-timeline" />
               <v-btn value="list" icon="mdi-format-list-bulleted" />
             </v-btn-toggle>
             
-            <!-- Time Range Selector -->
+            <!-- Time Range (for timeline view) -->
             <v-menu v-if="viewMode === 'timeline'">
               <template #activator="{ props }">
-                <v-btn
-                  v-bind="props"
-                  variant="outlined"
-                  size="small"
-                  append-icon="mdi-chevron-down"
-                >
-                  {{ timeRangeLabel }}
+                <v-btn v-bind="props" variant="outlined" prepend-icon="mdi-calendar">
+                  {{ timeRange }}
                 </v-btn>
               </template>
               <v-list>
-                <v-list-item
-                  v-for="range in timeRanges"
-                  :key="range.value"
-                  @click="setTimeRange(range.value)"
-                >
-                  <v-list-item-title>{{ range.label }}</v-list-item-title>
+                <v-list-item @click="setTimeRange('3months')">3 Months</v-list-item>
+                <v-list-item @click="setTimeRange('6months')">6 Months</v-list-item>
+                <v-list-item @click="setTimeRange('1year')">1 Year</v-list-item>
+                <v-list-item @click="setTimeRange('custom')">Custom</v-list-item>
+              </v-list>
+            </v-menu>
+            
+            <!-- Options Menu -->
+            <v-menu>
+              <template #activator="{ props }">
+                <v-btn v-bind="props" icon="mdi-dots-vertical" variant="outlined" />
+              </template>
+              <v-list>
+                <v-list-item @click="showLinkedTasks = !showLinkedTasks">
+                  <template #prepend>
+                    <v-icon>{{ showLinkedTasks ? 'mdi-eye' : 'mdi-eye-off' }}</v-icon>
+                  </template>
+                  <v-list-item-title>Show Linked Tasks</v-list-item-title>
+                </v-list-item>
+                
+                <v-list-item @click="showDependencies = !showDependencies">
+                  <template #prepend>
+                    <v-icon>{{ showDependencies ? 'mdi-eye' : 'mdi-eye-off' }}</v-icon>
+                  </template>
+                  <v-list-item-title>Show Dependencies</v-list-item-title>
+                </v-list-item>
+                
+                <v-divider />
+                
+                <v-list-subheader>Group By</v-list-subheader>
+                <v-list-item @click="groupBy = 'none'">
+                  <template #prepend>
+                    <v-icon>{{ groupBy === 'none' ? 'mdi-radiobox-marked' : 'mdi-radiobox-blank' }}</v-icon>
+                  </template>
+                  <v-list-item-title>None</v-list-item-title>
+                </v-list-item>
+                
+                <v-list-item @click="groupBy = 'type'">
+                  <template #prepend>
+                    <v-icon>{{ groupBy === 'type' ? 'mdi-radiobox-marked' : 'mdi-radiobox-blank' }}</v-icon>
+                  </template>
+                  <v-list-item-title>Type</v-list-item-title>
+                </v-list-item>
+                
+                <v-list-item @click="groupBy = 'team'">
+                  <template #prepend>
+                    <v-icon>{{ groupBy === 'team' ? 'mdi-radiobox-marked' : 'mdi-radiobox-blank' }}</v-icon>
+                  </template>
+                  <v-list-item-title>Team</v-list-item-title>
                 </v-list-item>
               </v-list>
             </v-menu>
             
-            <!-- Add Milestone Button -->
+            <!-- Create Button -->
             <v-btn
               color="primary"
-              size="small"
               prepend-icon="mdi-plus"
               @click="showCreateDialog = true"
             >
-              Add Milestone
+              Create Milestone
             </v-btn>
-            
-            <!-- Settings Menu -->
-            <v-menu offset-y>
-              <template #activator="{ props }">
-                <v-btn
-                  v-bind="props"
-                  icon="mdi-cog"
-                  variant="text"
-                  size="small"
-                />
-              </template>
-              
-              <v-card min-width="250">
-                <v-card-title>Roadmap Settings</v-card-title>
-                <v-card-text>
-                  <v-switch
-                    v-model="showLinkedTasks"
-                    label="Show linked tasks"
-                    density="compact"
-                  />
-                  <v-switch
-                    v-model="showDependencies"
-                    label="Show dependencies"
-                    density="compact"
-                  />
-                  <v-select
-                    v-model="groupBy"
-                    label="Group by"
-                    :items="[
-                      { title: 'None', value: 'none' },
-                      { title: 'Type', value: 'type' },
-                      { title: 'Team', value: 'team' }
-                    ]"
-                    density="compact"
-                  />
-                </v-card-text>
-              </v-card>
-            </v-menu>
           </div>
         </v-col>
       </v-row>
@@ -177,25 +165,28 @@
         <v-divider />
 
         <v-card-text class="pa-4">
-          <v-form ref="milestoneForm" v-model="milestoneFormValid">
+          <v-form ref="milestoneFormRef" v-model="milestoneFormValid" :key="formKey">
             <v-text-field
-              v-model="milestoneForm.title"
+              v-model="formTitle"
               label="Title"
+              variant="outlined"
               :rules="[v => !!v || 'Title is required']"
               required
             />
             
             <v-textarea
-              v-model="milestoneForm.description"
+              v-model="formDescription"
               label="Description"
+              variant="outlined"
               rows="3"
             />
 
             <v-row>
               <v-col cols="6">
                 <v-select
-                  v-model="milestoneForm.type"
+                  v-model="formType"
                   label="Type"
+                  variant="outlined"
                   :items="[
                     { title: 'Milestone', value: 'milestone' },
                     { title: 'Release', value: 'release' },
@@ -207,11 +198,13 @@
               
               <v-col cols="6">
                 <v-select
-                  v-model="milestoneForm.status"
+                  v-model="formStatus"
                   label="Status"
+                  variant="outlined"
                   :items="[
                     { title: 'Planned', value: 'planned' },
                     { title: 'In Progress', value: 'in-progress' },
+                    { title: 'In Progress', value: 'inprogress' },
                     { title: 'Completed', value: 'completed' },
                     { title: 'On Hold', value: 'on-hold' }
                   ]"
@@ -222,9 +215,10 @@
             <v-row>
               <v-col cols="6">
                 <v-text-field
-                  v-model="milestoneForm.startDate"
+                  v-model="formStartDate"
                   label="Start Date"
                   type="date"
+                  variant="outlined"
                   :rules="[v => !!v || 'Start date is required']"
                   required
                 />
@@ -232,12 +226,13 @@
               
               <v-col cols="6">
                 <v-text-field
-                  v-model="milestoneForm.endDate"
+                  v-model="formEndDate"
                   label="End Date"
                   type="date"
+                  variant="outlined"
                   :rules="[
                     v => !!v || 'End date is required',
-                    v => !milestoneForm.startDate || new Date(v) > new Date(milestoneForm.startDate) || 'End date must be after start date'
+                    v => !formStartDate || new Date(v) > new Date(formStartDate) || 'End date must be after start date'
                   ]"
                   required
                 />
@@ -250,10 +245,11 @@
 
         <v-card-actions>
           <v-spacer />
-          <v-btn @click="showCreateDialog = false">Cancel</v-btn>
+          <v-btn @click="cancelMilestoneEdit">Cancel</v-btn>
           <v-btn
             color="primary"
             :loading="saving"
+            :disabled="!milestoneFormValid"
             @click="saveMilestone"
           >
             {{ editingMilestone ? 'Update' : 'Create' }}
@@ -263,57 +259,48 @@
     </v-dialog>
 
     <!-- Milestone Details Dialog -->
-    <v-dialog
+    <MilestoneDetailsDialog
       v-model="showDetailsDialog"
-      max-width="800"
+      :milestone="selectedMilestone"
+      :linked-tasks="linkedTasks"
+      @milestone-edit="handleMilestoneEdit"
+      @milestone-updated="handleMilestoneUpdated"
+      @milestone-deleted="handleMilestoneDeleted"
+      @task-unlinked="handleTaskUnlinked"
+      @link-tasks="openTaskLinkDialog"
+    />
+
+    <!-- Task Link Dialog -->
+    <v-dialog
+      v-model="showTaskLinkDialog"
+      max-width="700"
       scrollable
     >
       <v-card v-if="selectedMilestone">
-        <v-card-title class="d-flex align-center">
-          <v-icon class="mr-2">{{ getMilestoneTypeIcon(selectedMilestone.type) }}</v-icon>
-          {{ selectedMilestone.title }}
-          <v-spacer />
-          <v-btn
-            icon="mdi-close"
-            variant="text"
-            @click="showDetailsDialog = false"
-          />
+        <v-card-title>
+          Link Tasks to {{ selectedMilestone.title }}
         </v-card-title>
 
         <v-divider />
 
         <v-card-text>
-          <div class="mb-4">
-            <h3 class="text-h6 mb-2">Details</h3>
-            <p>{{ selectedMilestone.description || 'No description' }}</p>
-            
-            <div class="d-flex align-center mb-2">
-              <v-chip :color="getMilestoneTypeColor(selectedMilestone.type)" size="small" class="mr-2">
-                {{ selectedMilestone.type }}
-              </v-chip>
-              <v-chip :color="getStatusColor(selectedMilestone.status)" size="small">
-                {{ selectedMilestone.status }}
-              </v-chip>
-            </div>
-            
-            <p class="text-body-2">
-              <v-icon size="16" class="mr-1">mdi-calendar</v-icon>
-              {{ formatDateRange(selectedMilestone.startDate, selectedMilestone.endDate) }}
-            </p>
-          </div>
-
-          <div v-if="getLinkedTasks(selectedMilestone.id).length > 0">
-            <h3 class="text-h6 mb-2">Linked Tasks ({{ getLinkedTasks(selectedMilestone.id).length }})</h3>
-            <v-list density="compact">
+          <div v-if="availableTasksForLinking.length > 0">
+            <v-list>
               <v-list-item
-                v-for="task in getLinkedTasks(selectedMilestone.id)"
+                v-for="task in availableTasksForLinking"
                 :key="task.id"
-                :to="`/kanban/${task.projectId}?task=${task.id}`"
+                @click="toggleTaskLink(task.id)"
               >
                 <template #prepend>
-                  <v-chip size="x-small" :color="getPriorityColor(task.priority)">
-                    {{ task.priority }}
-                  </v-chip>
+                  <div class="d-flex align-center ga-2">
+                    <v-checkbox
+                      :model-value="isTaskLinked(task.id)"
+                      @update:model-value="toggleTaskLink(task.id)"
+                    />
+                    <v-chip size="x-small" :color="getPriorityColor(task.priority)">
+                      {{ task.priority }}
+                    </v-chip>
+                  </div>
                 </template>
                 
                 <v-list-item-title>{{ task.title }}</v-list-item-title>
@@ -326,20 +313,34 @@
               </v-list-item>
             </v-list>
           </div>
+          
+          <div v-else class="text-center py-8">
+            <v-icon size="48" color="grey-lighten-1" class="mb-2">mdi-clipboard-text-off</v-icon>
+            <p class="text-body-2 text-medium-emphasis">No tasks available to link</p>
+          </div>
         </v-card-text>
+
+        <v-divider />
+
+        <v-card-actions>
+          <v-spacer />
+          <v-btn @click="showTaskLinkDialog = false">Close</v-btn>
+          <v-btn color="primary" @click="saveTaskLinks">Save Links</v-btn>
+        </v-card-actions>
       </v-card>
     </v-dialog>
   </div>
 </template>
 
 <script setup>
-import { ref, computed, watch, onMounted, nextTick } from 'vue'
+import { ref, computed, watch, onMounted, nextTick, triggerRef, reactive } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useProjectsStore } from '@/stores/projects'
 import { useTasksStore } from '@/stores/tasks'
 import { useUIStore } from '@/stores/ui'
 import RoadmapTimeline from '@/components/roadmap/RoadmapTimeline.vue'
 import RoadmapList from '@/components/roadmap/RoadmapList.vue'
+import MilestoneDetailsDialog from '@/components/roadmap/MilestoneDetailsDialog.vue'
 
 // Composables
 const route = useRoute()
@@ -350,7 +351,7 @@ const uiStore = useUIStore()
 
 // Refs
 const timelineRef = ref(null)
-//const milestoneForm = ref(null)
+const milestoneFormRef = ref(null)
 
 // Local state
 const loading = ref(false)
@@ -366,8 +367,9 @@ const editingMilestone = ref(null)
 const selectedMilestone = ref(null)
 const milestoneFormValid = ref(false)
 const saving = ref(false)
+const formKey = ref(0) // Add key to force form re-render
 
-// Form data
+// Form data - back to ref for template compatibility
 const milestoneForm = ref({
   title: '',
   description: '',
@@ -393,161 +395,130 @@ const roadmapItems = computed(() => {
   return items
 })
 
+// Get project tasks
 const projectTasks = computed(() => {
   if (!currentProjectId.value) return []
   return tasksStore.getTasksByProject(currentProjectId.value)
 })
 
-// Computed
-const linkedTasks = computed(() => {
-  const linkedTaskIds = roadmapItems.value.flatMap(item => item.taskIds || [])
-  return projectTasks.value.filter(task => linkedTaskIds.includes(task.id))
-})
-
-const availableTasks = computed(() => {
-  const linkedTaskIds = roadmapItems.value.flatMap(item => item.taskIds || [])
-  return projectTasks.value.filter(task => !linkedTaskIds.includes(task.id))
-})
-
-const completedMilestones = computed(() => 
-  roadmapItems.value.filter(item => {
-    const endDate = new Date(item.endDate || item.end)
-    const now = new Date()
-    return endDate < now && getMilestoneProgress(item.id) === 100
-  }).length
-)
-
-const activeMilestones = computed(() => 
-  roadmapItems.value.filter(item => {
-    const startDate = new Date(item.startDate || item.start)
-    const endDate = new Date(item.endDate || item.end)
-    const now = new Date()
-    return startDate <= now && endDate >= now
-  }).length
-)
-
-const projectProgress = computed(() => {
-  if (roadmapItems.value.length === 0) return 0
-  const totalProgress = roadmapItems.value.reduce((sum, item) => 
-    sum + getMilestoneProgress(item.id), 0
-  )
-  return Math.round(totalProgress / roadmapItems.value.length)
-})
-
-const timeRanges = [
-  { label: '3 Months', value: '3months' },
-  { label: '6 Months', value: '6months' },
-  { label: '1 Year', value: '1year' },
-  { label: '2 Years', value: '2years' },
-  { label: 'Custom', value: 'custom' }
-]
-
-const timeRangeLabel = computed(() => 
-  timeRanges.find(r => r.value === timeRange.value)?.label || '6 Months'
-)
-
-// Fix: Map the data correctly for the timeline component
+// Timeline data computed properties
 const timelineData = computed(() => {
-  console.log('Processing timeline data from roadmap items:', roadmapItems.value)
-  
-  return roadmapItems.value.map(item => {
-    // Map the properties correctly - the sample data uses startDate/endDate
-    const mappedItem = {
-      id: item.id,
-      title: item.title,
-      content: item.title,
-      // Use startDate/endDate from sample data, fallback to start/end
-      startDate: item.startDate || item.start,
-      endDate: item.endDate || item.end,
-      start: item.startDate || item.start,
-      end: item.endDate || item.end,
-      type: item.type || 'milestone',
-      status: item.status || 'planned',
-      progress: item.progress || 0,
-      group: getItemGroup(item),
-      className: `milestone-${item.status || 'planned'}`,
-      taskIds: item.taskIds || []
-    }
-    
-    console.log('Mapped timeline item:', mappedItem)
-    return mappedItem
-  })
+  return roadmapItems.value.map(item => ({
+    id: item.id,
+    content: item.title,
+    start: item.startDate || item.start,
+    end: item.endDate || item.end,
+    type: 'range',
+    className: `milestone-${item.status}`,
+    group: getItemGroup(item),
+    style: `background-color: ${getMilestoneTypeColor(item.type)};`,
+    title: `${item.title}\n${item.description || ''}\nProgress: ${getMilestoneProgress(item.id)}%`
+  }))
 })
 
 const timelineGroups = computed(() => {
   if (groupBy.value === 'none') return null
   
-  if (groupBy.value === 'type') {
-    return [
-      { id: 'milestone', content: 'Milestones' },
-      { id: 'release', content: 'Releases' },
-      { id: 'phase', content: 'Phases' },
-      { id: 'deadline', content: 'Deadlines' }
-    ]
-  }
+  const groups = new Set()
+  roadmapItems.value.forEach(item => {
+    const group = getItemGroup(item)
+    if (group) groups.add(group)
+  })
   
-  if (groupBy.value === 'team') {
-    return projectsStore.projectTeams.map(team => ({
-      id: team.id,
-      content: team.name,
-      style: `background-color: ${team.color}20`
-    }))
-  }
-  
-  return null
+  return Array.from(groups).map(group => ({
+    id: group,
+    content: group,
+    order: group === 'unassigned' ? 999 : 0
+  }))
 })
 
-const timelineOptions = computed(() => {
-  const options = {
-    stack: true,
-    showCurrentTime: true,
-    zoomable: true,
-    moveable: true,
-    selectable: true,
-    multiselect: false,
-    editable: {
-      updateTime: true,
-      updateGroup: groupBy.value !== 'none',
-      add: false,
-      remove: false
-    },
-    orientation: 'top',
-    margin: {
-      item: 10,
-      axis: 5
-    },
-    ...getTimeRangeOptions()
+const timelineOptions = computed(() => ({
+  ...getTimeRangeOptions(),
+  orientation: 'top',
+  stack: true,
+  showCurrentTime: true,
+  format: {
+    minorLabels: {
+      month: 'MMM',
+      week: 'w'
+    }
+  },
+  margin: {
+    item: 10,
+    axis: 5
+  },
+  editable: {
+    add: false,
+    updateTime: true,
+    updateGroup: false,
+    remove: false
   }
-  
-  console.log('Timeline options:', options)
-  return options
+}))
+
+// Get linked tasks for selected milestone
+const linkedTasks = computed(() => {
+  if (!selectedMilestone.value) return []
+  return getLinkedTasks(selectedMilestone.value.id)
 })
 
-// Methods
+// Available tasks for linking (not already linked)
+const availableTasksForLinking = computed(() => {
+  if (!selectedMilestone.value) return []
+  const linkedTaskIds = selectedMilestone.value.taskIds || []
+  return projectTasks.value.filter(task => !linkedTaskIds.includes(task.id))
+})
+
+// Computed properties for form fields to ensure reactivity
+const formTitle = computed({
+  get: () => milestoneForm.title,
+  set: (value) => milestoneForm.title = value
+})
+
+const formDescription = computed({
+  get: () => milestoneForm.description,
+  set: (value) => milestoneForm.description = value
+})
+
+const formType = computed({
+  get: () => milestoneForm.type,
+  set: (value) => milestoneForm.type = value
+})
+
+const formStatus = computed({
+  get: () => milestoneForm.status,
+  set: (value) => milestoneForm.status = value
+})
+
+const formStartDate = computed({
+  get: () => milestoneForm.startDate,
+  set: (value) => milestoneForm.startDate = value
+})
+
+const formEndDate = computed({
+  get: () => milestoneForm.endDate,
+  set: (value) => milestoneForm.endDate = value
+})
+
+// Helper functions
 const getTimeRangeOptions = () => {
   const now = new Date()
-  let start = new Date(now)
-  let end = new Date(now)
+  const start = new Date()
+  const end = new Date()
   
   switch (timeRange.value) {
     case '3months':
       start.setMonth(now.getMonth() - 1)
-      end.setMonth(now.getMonth() + 3)
+      end.setMonth(now.getMonth() + 2)
       break
     case '6months':
       start.setMonth(now.getMonth() - 2)
-      end.setMonth(now.getMonth() + 6)
+      end.setMonth(now.getMonth() + 4)
       break
     case '1year':
       start.setMonth(now.getMonth() - 3)
-      end.setFullYear(now.getFullYear() + 1)
+      end.setMonth(now.getMonth() + 9)
       break
-    case '2years':
-      start.setMonth(now.getMonth() - 6)
-      end.setFullYear(now.getFullYear() + 2)
-      break
-    default:
-      // When 'custom' is selected, vis-timeline will 'fit' the data.
+    case 'custom':
       if (roadmapItems.value.length > 0) {
         return {}
       }
@@ -638,7 +609,8 @@ const handleItemSelected = (item) => {
 }
 
 const handleItemDoubleClick = (item) => {
-  selectedMilestone.value = roadmapItems.value.find(i => i.id === item.id)
+  const milestone = roadmapItems.value.find(i => i.id === item.id)
+  selectedMilestone.value = milestone
   showDetailsDialog.value = true
 }
 
@@ -646,18 +618,144 @@ const handleGroupSelected = (group) => {
   console.log('Group selected:', group)
 }
 
-const editRoadmapItem = (item) => {
-  editingMilestone.value = { ...item }
-  milestoneForm.value = {
-    title: item.title || '',
-    description: item.description || '',
-    type: item.type || 'milestone',
-    status: item.status || 'planned',
-    startDate: item.startDate || item.start || '',
-    endDate: item.endDate || item.end || '',
-    taskIds: item.taskIds || []
+// Milestone editing functions
+const handleMilestoneEdit = (milestone) => {
+  console.log('Edit milestone:', milestone?.title) // Minimal debug
+  
+  if (!milestone) {
+    console.error('No milestone data provided for editing')
+    uiStore.showError('No milestone data available for editing')
+    return
   }
+  
+  // Set the milestone as the editing target
+  editingMilestone.value = { ...milestone }
+  
+  // Populate the form with milestone data - handle both date formats
+  const formData = {
+    title: milestone.title || '',
+    description: milestone.description || '',
+    type: milestone.type || 'milestone',
+    status: milestone.status || 'planned',
+    startDate: milestone.startDate || milestone.start || '',
+    endDate: milestone.endDate || milestone.end || '',
+    taskIds: milestone.taskIds || []
+  }
+  
+  console.log('Setting form data:', formData.title, formData.type) // Minimal debug
+  
+  // Use Object.assign to update reactive object
+  Object.assign(milestoneForm, formData)
+  
+  console.log('Form after set:', milestoneForm.title) // Minimal debug
+  
+  // Show the create/edit dialog
   showCreateDialog.value = true
+  
+  // Force update after dialog is shown
+  nextTick(() => {
+    console.log('nextTick - Form title:', milestoneForm.title)
+    formKey.value++ // Force form re-render
+  })
+  
+  // Show the create/edit dialog
+  showCreateDialog.value = true
+  
+  // Close the details dialog
+  showDetailsDialog.value = false
+}
+
+const editRoadmapItem = (item) => {
+  handleMilestoneEdit(item)
+}
+
+const cancelMilestoneEdit = () => {
+  showCreateDialog.value = false
+  editingMilestone.value = null
+  
+  // Reset form data using Object.assign
+  Object.assign(milestoneForm, {
+    title: '',
+    description: '',
+    type: 'milestone',
+    status: 'planned',
+    startDate: '',
+    endDate: '',
+    taskIds: []
+  })
+  
+  // Reset form validation
+  nextTick(() => {
+    if (milestoneForm) {
+      milestoneForm.resetValidation?.()
+    }
+  })
+}
+
+const saveMilestone = async () => {
+  if (!milestoneFormValid.value) return
+  
+  saving.value = true
+  try {
+    const milestoneData = {
+      ...milestoneForm,
+      projectId: currentProjectId.value
+    }
+    
+    if (editingMilestone.value) {
+      await tasksStore.updateRoadmapItem(editingMilestone.value.id, milestoneData)
+      uiStore.showSuccess('Milestone updated successfully')
+    } else {
+      await tasksStore.createRoadmapItem(milestoneData)
+      uiStore.showSuccess('Milestone created successfully')
+    }
+    
+    cancelMilestoneEdit()
+  } catch (error) {
+    uiStore.showError('Failed to save milestone: ' + error.message)
+  } finally {
+    saving.value = false
+  }
+}
+
+const handleMilestoneUpdated = async (milestone) => {
+  try {
+    if (milestone.id) {
+      // Update existing milestone
+      await tasksStore.updateRoadmapItem(milestone.id, milestone)
+      uiStore.showSuccess('Milestone updated successfully')
+    } else {
+      // Create new milestone (for duplicate functionality)
+      await tasksStore.createRoadmapItem(milestone)
+      uiStore.showSuccess('Milestone created successfully')
+    }
+  } catch (error) {
+    uiStore.showError('Failed to update milestone: ' + error.message)
+  }
+}
+
+const handleMilestoneDeleted = async (milestoneId) => {
+  try {
+    await tasksStore.deleteRoadmapItem(milestoneId)
+    uiStore.showSuccess('Milestone deleted successfully')
+    showDetailsDialog.value = false
+  } catch (error) {
+    uiStore.showError('Failed to delete milestone: ' + error.message)
+  }
+}
+
+const handleTaskUnlinked = async (milestoneId, taskId) => {
+  try {
+    // Remove task from milestone's taskIds
+    const milestone = roadmapItems.value.find(item => item.id === milestoneId)
+    if (milestone && milestone.taskIds) {
+      const updatedTaskIds = milestone.taskIds.filter(id => id !== taskId)
+      await tasksStore.updateRoadmapItem(milestoneId, { taskIds: updatedTaskIds })
+      uiStore.showSuccess('Task unlinked successfully')
+    }
+  } catch (error) {
+    uiStore.showError('Failed to unlink task: ' + error.message)
+  }
 }
 
 const deleteRoadmapItem = async (itemId) => {
@@ -698,45 +796,41 @@ const duplicateRoadmapItem = async (item) => {
   }
 }
 
-const saveMilestone = async () => {
-  if (!milestoneForm.value) return
-  
-  saving.value = true
-  try {
-    const milestoneData = {
-      ...milestoneForm.value,
-      projectId: currentProjectId.value
-    }
-    
-    if (editingMilestone.value) {
-      await tasksStore.updateRoadmapItem(editingMilestone.value.id, milestoneData)
-      uiStore.showSuccess('Milestone updated successfully')
-    } else {
-      await tasksStore.createRoadmapItem(milestoneData)
-      uiStore.showSuccess('Milestone created successfully')
-    }
-    
-    showCreateDialog.value = false
-    editingMilestone.value = null
-    milestoneForm.value = {
-      title: '',
-      description: '',
-      type: 'milestone',
-      status: 'planned',
-      startDate: '',
-      endDate: '',
-      taskIds: []
-    }
-  } catch (error) {
-    uiStore.showError('Failed to save milestone: ' + error.message)
-  } finally {
-    saving.value = false
-  }
-}
-
+// Task linking functions
 const openTaskLinkDialog = (milestone) => {
   selectedMilestone.value = milestone
   showTaskLinkDialog.value = true
+}
+
+const isTaskLinked = (taskId) => {
+  return selectedMilestone.value?.taskIds?.includes(taskId) || false
+}
+
+const toggleTaskLink = (taskId) => {
+  if (!selectedMilestone.value) return
+  
+  const taskIds = selectedMilestone.value.taskIds || []
+  if (taskIds.includes(taskId)) {
+    // Remove task
+    selectedMilestone.value.taskIds = taskIds.filter(id => id !== taskId)
+  } else {
+    // Add task
+    selectedMilestone.value.taskIds = [...taskIds, taskId]
+  }
+}
+
+const saveTaskLinks = async () => {
+  if (!selectedMilestone.value) return
+  
+  try {
+    await tasksStore.updateRoadmapItem(selectedMilestone.value.id, {
+      taskIds: selectedMilestone.value.taskIds || []
+    })
+    uiStore.showSuccess('Task links updated successfully')
+    showTaskLinkDialog.value = false
+  } catch (error) {
+    uiStore.showError('Failed to update task links: ' + error.message)
+  }
 }
 
 // Helper methods
@@ -835,6 +929,26 @@ onMounted(() => {
 watch(currentProjectId, (newProjectId) => {
   if (newProjectId) {
     console.log('Project changed to:', newProjectId)
+  }
+})
+
+// Watch for dialog opening to ensure form is populated
+watch(showCreateDialog, (isOpen, wasOpen) => {
+  if (isOpen && editingMilestone.value) {
+    // Ensure the form is populated when dialog opens
+    nextTick(() => {
+      const formData = {
+        title: editingMilestone.value.title || '',
+        description: editingMilestone.value.description || '',
+        type: editingMilestone.value.type || 'milestone',
+        status: editingMilestone.value.status || 'planned',
+        startDate: editingMilestone.value.startDate || editingMilestone.value.start || '',
+        endDate: editingMilestone.value.endDate || editingMilestone.value.end || '',
+        taskIds: editingMilestone.value.taskIds || []
+      }
+      // Use Object.assign to update reactive object
+      Object.assign(milestoneForm, formData)
+    })
   }
 })
 </script>

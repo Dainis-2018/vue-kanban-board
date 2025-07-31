@@ -1,3 +1,4 @@
+<!-- src/components/roadmap/MilestoneDetailsDialog.vue -->
 <template>
   <v-dialog
     :model-value="modelValue"
@@ -68,280 +69,262 @@
               <div class="mb-6">
                 <div class="d-flex align-center justify-space-between mb-3">
                   <h3 class="text-h6">Progress Overview</h3>
-                  <span class="text-h4 font-weight-bold" :class="getProgressColor(milestoneProgress)">
-                    {{ milestoneProgress }}%
-                  </span>
+                  <v-chip
+                    :color="getProgressColor(milestoneProgress)"
+                    size="small"
+                    variant="flat"
+                  >
+                    {{ milestoneProgress }}% Complete
+                  </v-chip>
                 </div>
                 
                 <v-progress-linear
                   :model-value="milestoneProgress"
                   :color="getProgressColor(milestoneProgress)"
-                  height="12"
+                  height="8"
                   rounded
                   class="mb-3"
                 />
                 
-                <div class="d-flex justify-space-between text-caption text-medium-emphasis">
-                  <span>{{ completedTasks }} of {{ totalTasks }} tasks completed</span>
-                  <span>{{ remainingDays }} days remaining</span>
+                <div class="stats-grid">
+                  <v-card class="stat-item pa-3" variant="outlined">
+                    <div class="d-flex align-center justify-space-between">
+                      <div>
+                        <div class="text-h6 font-weight-bold">{{ totalTasks }}</div>
+                        <div class="text-caption text-medium-emphasis">Total Tasks</div>
+                      </div>
+                      <v-icon color="primary">mdi-format-list-checks</v-icon>
+                    </div>
+                  </v-card>
+                  
+                  <v-card class="stat-item pa-3" variant="outlined">
+                    <div class="d-flex align-center justify-space-between">
+                      <div>
+                        <div class="text-h6 font-weight-bold text-success">{{ completedTasks }}</div>
+                        <div class="text-caption text-medium-emphasis">Completed</div>
+                      </div>
+                      <v-icon color="success">mdi-check-circle</v-icon>
+                    </div>
+                  </v-card>
+                  
+                  <v-card class="stat-item pa-3" variant="outlined">
+                    <div class="d-flex align-center justify-space-between">
+                      <div>
+                        <div class="text-h6 font-weight-bold text-warning">{{ inProgressTasks }}</div>
+                        <div class="text-caption text-medium-emphasis">In Progress</div>
+                      </div>
+                      <v-icon color="warning">mdi-clock</v-icon>
+                    </div>
+                  </v-card>
+                  
+                  <v-card class="stat-item pa-3" variant="outlined">
+                    <div class="d-flex align-center justify-space-between">
+                      <div>
+                        <div class="text-h6 font-weight-bold">{{ remainingTasks }}</div>
+                        <div class="text-caption text-medium-emphasis">Remaining</div>
+                      </div>
+                      <v-icon color="grey">mdi-minus-circle</v-icon>
+                    </div>
+                  </v-card>
                 </div>
               </div>
-              
-              <!-- Description -->
-              <div v-if="milestone.content" class="mb-6">
-                <h3 class="text-h6 mb-3">Description</h3>
-                <p class="text-body-1">{{ milestone.content }}</p>
-              </div>
-              
-              <!-- Success Criteria -->
-              <div v-if="milestone.successCriteria" class="mb-6">
-                <h3 class="text-h6 mb-3">Success Criteria</h3>
-                <p class="text-body-1">{{ milestone.successCriteria }}</p>
-              </div>
-              
-              <!-- Linked Tasks -->
+
+              <!-- Milestone Details -->
               <div class="mb-6">
+                <h3 class="text-h6 mb-3">Details</h3>
+                
+                <div class="detail-item mb-3">
+                  <span class="text-body-2 text-medium-emphasis">Duration</span>
+                  <span class="text-body-1 font-weight-medium">
+                    {{ getMilestoneDuration(milestone) }} days
+                  </span>
+                </div>
+                
+                <div class="detail-item mb-3">
+                  <span class="text-body-2 text-medium-emphasis">Start Date</span>
+                  <span class="text-body-1 font-weight-medium">
+                    {{ formatDate(milestone.start || milestone.startDate) }}
+                  </span>
+                </div>
+                
+                <div class="detail-item mb-3">
+                  <span class="text-body-2 text-medium-emphasis">End Date</span>
+                  <span class="text-body-1 font-weight-medium">
+                    {{ formatDate(milestone.end || milestone.endDate) }}
+                  </span>
+                </div>
+                
+                <div v-if="milestone.description" class="detail-item mb-3">
+                  <span class="text-body-2 text-medium-emphasis">Description</span>
+                  <span class="text-body-1">{{ milestone.description }}</span>
+                </div>
+              </div>
+
+              <!-- Linked Tasks -->
+              <div class="mb-4">
                 <div class="d-flex align-center justify-space-between mb-3">
                   <h3 class="text-h6">Linked Tasks ({{ linkedTasks.length }})</h3>
                   <v-btn
                     size="small"
-                    color="primary"
                     variant="outlined"
                     prepend-icon="mdi-link"
-                    @click="$emit('task-linked')"
+                    @click="$emit('link-tasks', milestone)"
                   >
                     Link Tasks
                   </v-btn>
                 </div>
                 
-                <!-- Task List -->
                 <div v-if="linkedTasks.length > 0" class="tasks-container">
                   <v-card
                     v-for="task in linkedTasks"
                     :key="task.id"
+                    class="task-card mb-2"
                     variant="outlined"
-                    class="task-card mb-3"
                   >
                     <v-card-text class="pa-3">
+                      <div class="d-flex align-center justify-space-between mb-2">
+                        <div class="d-flex align-center">
+                          <v-chip
+                            :color="getPriorityColor(task.priority)"
+                            size="x-small"
+                            variant="flat"
+                            class="mr-2"
+                          >
+                            {{ task.priority }}
+                          </v-chip>
+                          
+                          <span class="text-subtitle-2 font-weight-medium">
+                            {{ task.title }}
+                          </span>
+                        </div>
+                        
+                        <div class="d-flex align-center ga-1">
+                          <v-chip
+                            :color="getTaskStatusColor(task.columnId)"
+                            size="x-small"
+                            variant="tonal"
+                          >
+                            {{ getTaskStatusLabel(task.columnId) }}
+                          </v-chip>
+                          
+                          <v-btn
+                            icon="mdi-close"
+                            size="x-small"
+                            variant="text"
+                            @click="unlinkTask(task.id)"
+                          />
+                        </div>
+                      </div>
+                      
                       <div class="d-flex align-center justify-space-between">
-                        <div class="flex-grow-1">
-                          <!-- Task Header -->
-                          <div class="d-flex align-center mb-2">
-                            <v-chip
-                              :color="getTaskStatusColor(task.columnId)"
-                              size="x-small"
-                              variant="flat"
-                              class="mr-2"
+                        <div class="d-flex align-center">
+                          <!-- Assignees -->
+                          <div 
+                            v-if="task.assigneeIds && task.assigneeIds.length > 0" 
+                            class="d-flex align-center mr-3"
+                          >
+                            <v-avatar
+                              v-for="userId in task.assigneeIds.slice(0, 3)"
+                              :key="userId"
+                              size="24"
+                              class="assignee-avatar"
                             >
-                              {{ getTaskStatusLabel(task.columnId) }}
-                            </v-chip>
-                            
-                            <v-chip
-                              :color="getPriorityColor(task.priority)"
-                              size="x-small"
-                              variant="outlined"
-                              class="mr-2"
-                            >
-                              {{ task.priority?.toUpperCase() }}
-                            </v-chip>
-                            
-                            <v-chip
-                              size="x-small"
-                              variant="tonal"
-                              color="grey"
-                            >
-                              #{{ task.id.split('-')[1] }}
-                            </v-chip>
+                              <v-img :src="getUserById(userId)?.avatar" :alt="getUserById(userId)?.name" />
+                              <v-tooltip activator="parent" location="top">{{ getUserById(userId)?.name }}</v-tooltip>
+                            </v-avatar>
+                            <v-avatar v-if="task.assigneeIds.length > 3" size="24" color="grey-lighten-1" class="assignee-avatar">
+                              <span class="text-caption text-white">+{{ task.assigneeIds.length - 3 }}</span>
+                            </v-avatar>
                           </div>
                           
-                          <!-- Task Title -->
-                          <h4 class="text-body-1 font-weight-medium mb-2">
-                            {{ task.title }}
-                          </h4>
-                          
-                          <!-- Task Meta -->
-                          <div class="d-flex align-center justify-space-between">
-                            <div class="d-flex align-center">
-                              <!-- Assignees -->
-                              <div
-                                v-if="task.assigneeIds?.length"
-                                class="d-flex align-center mr-3"
-                              >
-                                <v-avatar
-                                  v-for="userId in task.assigneeIds.slice(0, 3)"
-                                  :key="userId"
-                                  size="24"
-                                  class="assignee-avatar"
-                                >
-                                  <v-img :src="getUserById(userId)?.avatar" :alt="getUserById(userId)?.name" />
-                                  <v-tooltip activator="parent" location="top">{{ getUserById(userId)?.name }}</v-tooltip>
-                                </v-avatar>
-                                <v-avatar v-if="task.assigneeIds.length > 3" size="24" color="grey-lighten-1" class="assignee-avatar">
-                                  <span class="text-caption text-white">+{{ task.assigneeIds.length - 3 }}</span>
-                                </v-avatar>
-                              </div>
-                              
-                              <!-- Tags -->
-                              <div v-if="task.tags?.length" class="d-flex align-center ga-1">
-                                <v-chip
-                                  v-for="tag in task.tags.slice(0, 2)"
-                                  :key="tag"
-                                  size="x-small"
-                                  variant="outlined"
-                                >
-                                  {{ tag }}
-                                </v-chip>
-                                <span v-if="task.tags.length > 2" class="text-caption text-medium-emphasis">
-                                  +{{ task.tags.length - 2 }}
-                                </span>
-                              </div>
-                            </div>
-                            
-                            <!-- Due Date -->
-                            <div v-if="task.dueDate" class="text-caption text-medium-emphasis">
-                              Due {{ formatDate(task.dueDate) }}
-                            </div>
+                          <!-- Tags -->
+                          <div v-if="task.tags?.length" class="d-flex align-center ga-1">
+                            <v-chip
+                              v-for="tag in task.tags.slice(0, 2)"
+                              :key="tag"
+                              size="x-small"
+                              variant="outlined"
+                            >
+                              {{ tag }}
+                            </v-chip>
+                            <span v-if="task.tags.length > 2" class="text-caption text-medium-emphasis">
+                              +{{ task.tags.length - 2 }}
+                            </span>
                           </div>
                         </div>
                         
-                        <!-- Unlink Button -->
-                        <v-btn
-                          icon="mdi-link-off"
-                          variant="text"
-                          size="small"
-                          color="error"
-                          @click="unlinkTask(task.id)"
-                        />
+                        <!-- Due Date -->
+                        <div v-if="task.dueDate" class="text-caption text-medium-emphasis">
+                          Due {{ formatDate(task.dueDate) }}
+                        </div>
                       </div>
                     </v-card-text>
                   </v-card>
                 </div>
                 
-                <!-- No Tasks State -->
-                <div v-else class="text-center pa-6">
-                  <v-icon size="48" color="medium-emphasis" class="mb-2">
-                    mdi-link-off
-                  </v-icon>
-                  <p class="text-body-2 text-medium-emphasis mb-3">
-                    No tasks linked to this milestone
-                  </p>
+                <div v-else class="text-center py-8">
+                  <v-icon size="48" color="grey-lighten-1" class="mb-2">mdi-link-off</v-icon>
+                  <p class="text-body-2 text-medium-emphasis">No tasks linked to this milestone</p>
                   <v-btn
-                    color="primary"
-                    variant="outlined"
+                    size="small"
+                    variant="text"
                     prepend-icon="mdi-link"
-                    @click="$emit('task-linked')"
+                    @click="$emit('link-tasks', milestone)"
                   >
-                    Link Your First Task
+                    Link Tasks
                   </v-btn>
                 </div>
               </div>
             </div>
           </v-col>
           
-          <!-- Right Column - Metadata -->
+          <!-- Right Column - Timeline -->
           <v-col cols="12" md="4">
-            <div class="pa-4 bg-surface-variant h-100">
-              <!-- Timeline -->
-              <div class="mb-6">
-                <h4 class="text-subtitle-1 font-weight-bold mb-3">Timeline</h4>
+            <v-card class="h-100" variant="flat">
+              <v-card-text class="pa-4">
+                <h3 class="text-h6 mb-3">Timeline</h3>
                 
-                <div class="timeline-info">
-                  <div class="d-flex align-center justify-space-between mb-2">
-                    <span class="text-body-2 font-weight-medium">Start Date:</span>
-                    <span class="text-body-2">{{ formatDate(milestone.start) }}</span>
-                  </div>
-                  
-                  <div class="d-flex align-center justify-space-between mb-2">
-                    <span class="text-body-2 font-weight-medium">End Date:</span>
-                    <span class="text-body-2">{{ formatDate(milestone.end) }}</span>
-                  </div>
-                  
-                  <div class="d-flex align-center justify-space-between mb-3">
-                    <span class="text-body-2 font-weight-medium">Duration:</span>
-                    <span class="text-body-2">{{ getMilestoneDuration(milestone) }} days</span>
-                  </div>
-                  
-                  <!-- Timeline Bar -->
-                  <div class="timeline-bar">
-                    <div 
-                      class="timeline-progress"
-                      :style="{ 
-                        width: `${milestoneProgress}%`,
-                        backgroundColor: getProgressColorValue(milestoneProgress)
-                      }"
-                    />
-                  </div>
+                <div class="timeline-bar mb-2">
+                  <div 
+                    class="timeline-progress bg-primary"
+                    :style="{ width: `${milestoneProgress}%` }"
+                  />
                 </div>
-              </div>
-              
-              <!-- Details -->
-              <div class="mb-6">
-                <h4 class="text-subtitle-1 font-weight-bold mb-3">Details</h4>
                 
-                <div class="detail-list">
-                  <div class="detail-item mb-3">
-                    <span class="text-body-2 font-weight-medium">Priority:</span>
-                    <v-chip
-                      :color="getPriorityColor(milestone.priority)"
-                      size="small"
-                      variant="flat"
-                      class="ml-2"
-                    >
-                      {{ milestone.priority?.toUpperCase() || 'MEDIUM' }}
-                    </v-chip>
-                  </div>
-                  
-                  <div class="detail-item mb-3">
-                    <span class="text-body-2 font-weight-medium">Team:</span>
-                    <span class="ml-2">{{ getTeamName(milestone.teamId) }}</span>
-                  </div>
-                  
-                  <div v-if="milestone.budget" class="detail-item mb-3">
-                    <span class="text-body-2 font-weight-medium">Budget:</span>
-                    <span class="ml-2">${{ milestone.budget.toLocaleString() }}</span>
-                  </div>
-                  
-                  <div v-if="milestone.estimatedHours" class="detail-item mb-3">
-                    <span class="text-body-2 font-weight-medium">Est. Hours:</span>
-                    <span class="ml-2">{{ milestone.estimatedHours }}h</span>
-                  </div>
+                <div class="d-flex justify-space-between text-caption text-medium-emphasis mb-4">
+                  <span>{{ formatDate(milestone.start || milestone.startDate) }}</span>
+                  <span>{{ formatDate(milestone.end || milestone.endDate) }}</span>
                 </div>
-              </div>
-              
-              <!-- Quick Stats -->
-              <div class="mb-6">
-                <h4 class="text-subtitle-1 font-weight-bold mb-3">Quick Stats</h4>
                 
-                <div class="stats-grid">
-                  <div class="stat-item text-center pa-3 rounded border">
-                    <div class="text-h5 font-weight-bold text-primary">{{ totalTasks }}</div>
-                    <div class="text-caption text-medium-emphasis">Total Tasks</div>
-                  </div>
-                  
-                  <div class="stat-item text-center pa-3 rounded border">
-                    <div class="text-h5 font-weight-bold text-success">{{ completedTasks }}</div>
-                    <div class="text-caption text-medium-emphasis">Completed</div>
-                  </div>
-                  
-                  <div class="stat-item text-center pa-3 rounded border">
-                    <div class="text-h5 font-weight-bold text-warning">{{ inProgressTasks }}</div>
-                    <div class="text-caption text-medium-emphasis">In Progress</div>
-                  </div>
-                  
-                  <div class="stat-item text-center pa-3 rounded border">
-                    <div class="text-h5 font-weight-bold text-info">{{ remainingTasks }}</div>
-                    <div class="text-caption text-medium-emphasis">Remaining</div>
-                  </div>
+                <!-- Team Assignment -->
+                <div v-if="milestone.teamId" class="mb-4">
+                  <h4 class="text-subtitle-2 mb-2">Assigned Team</h4>
+                  <v-chip size="small" variant="outlined">
+                    {{ getTeamName(milestone.teamId) }}
+                  </v-chip>
                 </div>
-              </div>
-            </div>
+                
+                <!-- Dependencies -->
+                <div v-if="milestone.dependencies?.length" class="mb-4">
+                  <h4 class="text-subtitle-2 mb-2">Dependencies</h4>
+                  <v-chip
+                    v-for="dep in milestone.dependencies"
+                    :key="dep"
+                    size="small"
+                    variant="outlined"
+                    class="mr-1 mb-1"
+                  >
+                    {{ dep }}
+                  </v-chip>
+                </div>
+              </v-card-text>
+            </v-card>
           </v-col>
         </v-row>
       </v-card-text>
       
       <v-divider />
       
-      <!-- Actions -->
       <v-card-actions class="pa-4">
         <div class="d-flex align-center justify-space-between w-100">
           <div class="d-flex align-center ga-2">
@@ -405,10 +388,12 @@ const props = defineProps({
 // Emits
 const emit = defineEmits([
   'update:modelValue',
+  'milestone-edit',
   'milestone-updated',
   'milestone-deleted',
   'task-linked',
-  'task-unlinked'
+  'task-unlinked',
+  'link-tasks'
 ])
 
 // Composables
@@ -436,23 +421,13 @@ const milestoneProgress = computed(() => {
   return Math.round((completedTasks.value / totalTasks.value) * 100)
 })
 
-const remainingDays = computed(() => {
-  if (!props.milestone?.end) return 0
-  const endDate = new Date(props.milestone.end)
-  const today = new Date()
-  const diffTime = endDate.getTime() - today.getTime()
-  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
-  return Math.max(0, diffDays)
-})
-
-// Methods
+// Helper methods
 const getMilestoneTypeColor = (type) => {
   const colors = {
     milestone: 'primary',
     release: 'success',
     phase: 'info',
-    deadline: 'warning',
-    review: 'purple'
+    deadline: 'warning'
   }
   return colors[type] || 'primary'
 }
@@ -462,47 +437,32 @@ const getMilestoneTypeIcon = (type) => {
     milestone: 'mdi-flag',
     release: 'mdi-rocket-launch',
     phase: 'mdi-timeline',
-    deadline: 'mdi-clock-alert',
-    review: 'mdi-eye'
+    deadline: 'mdi-clock-alert'
   }
   return icons[type] || 'mdi-flag'
 }
 
 const getMilestoneStatus = (milestone) => {
-  const now = new Date()
-  const start = new Date(milestone.start)
-  const end = new Date(milestone.end)
-  const progress = milestoneProgress.value
+  if (!milestone) return { label: 'Unknown', color: 'grey' }
   
-  if (progress === 100) {
-    return { label: 'Completed', value: 'completed', color: 'success' }
+  const status = milestone.status || 'planned'
+  const statusMap = {
+    planned: { label: 'Planned', color: 'grey' },
+    'in-progress': { label: 'In Progress', color: 'primary' },
+    completed: { label: 'Completed', color: 'success' },
+    'on-hold': { label: 'On Hold', color: 'warning' },
+    overdue: { label: 'Overdue', color: 'error' }
   }
   
-  if (end < now) {
-    return { label: 'Overdue', value: 'overdue', color: 'error' }
-  }
-  
-  if (start <= now && end >= now) {
-    return { label: 'In Progress', value: 'in-progress', color: 'info' }
-  }
-  
-  return { label: 'Not Started', value: 'not-started', color: 'grey' }
+  return statusMap[status] || { label: status, color: 'grey' }
 }
 
 const getProgressColor = (progress) => {
-  if (progress >= 100) return 'text-success'
-  if (progress >= 75) return 'text-info'
-  if (progress >= 50) return 'text-warning'
-  if (progress >= 25) return 'text-orange'
-  return 'text-error'
-}
-
-const getProgressColorValue = (progress) => {
-  if (progress >= 100) return '#4CAF50'
-  if (progress >= 75) return '#2196F3'
-  if (progress >= 50) return '#FF9800'
-  if (progress >= 25) return '#FF5722'
-  return '#F44336'
+  if (progress >= 100) return 'success'
+  if (progress >= 75) return 'primary'
+  if (progress >= 50) return 'info'
+  if (progress >= 25) return 'warning'
+  return 'error'
 }
 
 const getTaskStatusColor = (columnId) => {
@@ -547,13 +507,14 @@ const getTeamName = (teamId) => {
 }
 
 const getMilestoneDuration = (milestone) => {
-  const start = new Date(milestone.start)
-  const end = new Date(milestone.end)
+  const start = new Date(milestone.start || milestone.startDate)
+  const end = new Date(milestone.end || milestone.endDate)
   const diffTime = Math.abs(end - start)
   return Math.ceil(diffTime / (1000 * 60 * 60 * 24))
 }
 
 const formatDate = (dateString) => {
+  if (!dateString) return 'Not set'
   return new Date(dateString).toLocaleDateString('en-US', {
     month: 'short',
     day: 'numeric',
@@ -562,15 +523,22 @@ const formatDate = (dateString) => {
 }
 
 const editMilestone = () => {
-  emit('milestone-updated', props.milestone)
+  console.log('Edit milestone clicked:', props.milestone)
+  // Emit milestone-edit event to trigger the edit form in parent
+  emit('milestone-edit', props.milestone)
+  // Close the details dialog
+  emit('update:modelValue', false)
 }
 
 const duplicateMilestone = () => {
   const newMilestone = {
     ...props.milestone,
     title: `${props.milestone.title} (Copy)`,
-    start: new Date(new Date(props.milestone.start).getTime() + 7 * 24 * 60 * 60 * 1000).toISOString(),
-    end: new Date(new Date(props.milestone.end).getTime() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+    start: new Date(new Date(props.milestone.start || props.milestone.startDate).getTime() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+    end: new Date(new Date(props.milestone.end || props.milestone.endDate).getTime() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+    startDate: new Date(new Date(props.milestone.start || props.milestone.startDate).getTime() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+    endDate: new Date(new Date(props.milestone.end || props.milestone.endDate).getTime() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+    status: 'planned',
     taskIds: []
   }
   
