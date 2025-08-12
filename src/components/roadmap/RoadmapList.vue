@@ -11,7 +11,7 @@
         <v-card
           elevation="2"
           class="milestone-card h-100"
-          @click="$emit('edit', item)"
+          @click="$emit('view', item.id)"
         >
           <v-card-title class="d-flex align-center justify-space-between">
             <div class="d-flex align-center">
@@ -36,6 +36,12 @@
                 />
               </template>
               <v-list>
+                <v-list-item @click="$emit('view', item.id)">
+                  <template #prepend>
+                    <v-icon>mdi-eye</v-icon>
+                  </template>
+                  <v-list-item-title>View Details</v-list-item-title>
+                </v-list-item>
                 <v-list-item @click="$emit('edit', item)">
                   <template #prepend>
                     <v-icon>mdi-pencil</v-icon>
@@ -123,47 +129,59 @@
             </div>
 
             <!-- Linked Tasks -->
-            <div v-if="getLinkedTasksCount(item.id) > 0" class="mb-3">
+            <div class="mb-3">
               <div class="d-flex align-center justify-space-between mb-2">
-                <span class="text-subtitle-2">Linked Tasks</span>
+                <span class="text-caption">Linked Tasks</span>
                 <v-chip size="x-small" variant="outlined">
-                  {{ getLinkedTasksCount(item.id) }}
+                  {{ getLinkedTasksCount(item.id) }} tasks
                 </v-chip>
               </div>
               
-              <div class="linked-tasks">
-                <v-chip
-                  v-for="task in getLinkedTasks(item.id).slice(0, 3)"
-                  :key="task.id"
-                  size="x-small"
-                  :color="getPriorityColor(task.priority)"
-                  variant="flat"
-                  class="mr-1 mb-1"
-                >
-                  {{ task.title }}
-                </v-chip>
-                <v-chip
-                  v-if="getLinkedTasks(item.id).length > 3"
-                  size="x-small"
-                  variant="outlined"
-                  class="mr-1 mb-1"
-                >
-                  +{{ getLinkedTasks(item.id).length - 3 }} more
-                </v-chip>
+              <div v-if="getLinkedTasksCount(item.id) > 0" class="linked-tasks">
+                <div class="d-flex flex-wrap gap-1">
+                  <v-chip
+                    v-for="task in getLinkedTasks(item.id).slice(0, 3)"
+                    :key="task.id"
+                    :color="getTaskStatusColor(task.columnId)"
+                    size="x-small"
+                    variant="outlined"
+                  >
+                    {{ task.title }}
+                  </v-chip>
+                  <v-chip
+                    v-if="getLinkedTasksCount(item.id) > 3"
+                    size="x-small"
+                    variant="outlined"
+                  >
+                    +{{ getLinkedTasksCount(item.id) - 3 }} more
+                  </v-chip>
+                </div>
+              </div>
+              
+              <div v-else class="text-caption text-medium-emphasis">
+                No tasks linked
               </div>
             </div>
 
             <!-- Status Summary -->
             <div class="status-summary">
-              <div class="d-flex justify-space-between text-caption">
-                <div>
-                  <v-icon size="12" class="mr-1" :color="getStatusIcon(item).color">
+              <div class="d-flex align-center justify-space-between">
+                <div class="d-flex align-center">
+                  <v-icon
+                    :color="getStatusIcon(item).color"
+                    size="16"
+                    class="mr-1"
+                  >
                     {{ getStatusIcon(item).icon }}
                   </v-icon>
-                  {{ getStatusIcon(item).label }}
+                  <span class="text-caption">{{ getStatusIcon(item).label }}</span>
                 </div>
-                <div v-if="item.progress !== undefined">
-                  {{ item.progress }}% complete
+                
+                <div class="d-flex align-center">
+                  <v-icon size="14" class="mr-1">mdi-target</v-icon>
+                  <span class="text-caption">
+                    {{ formatDate(item.endDate || item.end) }}
+                  </span>
                 </div>
               </div>
             </div>
@@ -173,8 +191,8 @@
     </v-row>
     
     <!-- Empty State -->
-    <div v-if="!items || items.length === 0" class="text-center py-12">
-      <v-icon size="64" color="grey-lighten-1" class="mb-4">mdi-format-list-bulleted</v-icon>
+    <div v-if="items.length === 0" class="text-center py-12">
+      <v-icon size="64" color="grey-lighten-2" class="mb-4">mdi-timeline-outline</v-icon>
       <h3 class="text-h6 mb-2">No roadmap items</h3>
       <p class="text-body-2 text-medium-emphasis">
         Create milestones and releases to see them here
@@ -198,7 +216,7 @@ const props = defineProps({
   }
 })
 
-defineEmits(['edit', 'delete', 'duplicate', 'link-tasks'])
+defineEmits(['edit', 'view', 'delete', 'duplicate', 'link-tasks'])
 
 const projectsStore = useProjectsStore()
 

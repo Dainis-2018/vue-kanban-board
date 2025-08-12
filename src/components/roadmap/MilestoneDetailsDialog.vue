@@ -1,4 +1,3 @@
-<!-- src/components/roadmap/MilestoneDetailsDialog.vue -->
 <template>
   <v-dialog
     :model-value="modelValue"
@@ -83,49 +82,11 @@
                   :color="getProgressColor(milestoneProgress)"
                   height="8"
                   rounded
-                  class="mb-3"
                 />
                 
-                <div class="stats-grid">
-                  <v-card class="stat-item pa-3" variant="outlined">
-                    <div class="d-flex align-center justify-space-between">
-                      <div>
-                        <div class="text-h6 font-weight-bold">{{ totalTasks }}</div>
-                        <div class="text-caption text-medium-emphasis">Total Tasks</div>
-                      </div>
-                      <v-icon color="primary">mdi-format-list-checks</v-icon>
-                    </div>
-                  </v-card>
-                  
-                  <v-card class="stat-item pa-3" variant="outlined">
-                    <div class="d-flex align-center justify-space-between">
-                      <div>
-                        <div class="text-h6 font-weight-bold text-success">{{ completedTasks }}</div>
-                        <div class="text-caption text-medium-emphasis">Completed</div>
-                      </div>
-                      <v-icon color="success">mdi-check-circle</v-icon>
-                    </div>
-                  </v-card>
-                  
-                  <v-card class="stat-item pa-3" variant="outlined">
-                    <div class="d-flex align-center justify-space-between">
-                      <div>
-                        <div class="text-h6 font-weight-bold text-warning">{{ inProgressTasks }}</div>
-                        <div class="text-caption text-medium-emphasis">In Progress</div>
-                      </div>
-                      <v-icon color="warning">mdi-clock</v-icon>
-                    </div>
-                  </v-card>
-                  
-                  <v-card class="stat-item pa-3" variant="outlined">
-                    <div class="d-flex align-center justify-space-between">
-                      <div>
-                        <div class="text-h6 font-weight-bold">{{ remainingTasks }}</div>
-                        <div class="text-caption text-medium-emphasis">Remaining</div>
-                      </div>
-                      <v-icon color="grey">mdi-minus-circle</v-icon>
-                    </div>
-                  </v-card>
+                <div class="d-flex justify-space-between text-caption text-medium-emphasis mb-4 mt-2">
+                  <span>{{ formatDate(milestone.start || milestone.startDate) }}</span>
+                  <span>{{ formatDate(milestone.end || milestone.endDate) }}</span>
                 </div>
               </div>
 
@@ -182,143 +143,140 @@
                     variant="outlined"
                   >
                     <v-card-text class="pa-3">
-                      <div class="d-flex align-center justify-space-between mb-2">
-                        <div class="d-flex align-center">
-                          <v-chip
-                            :color="getPriorityColor(task.priority)"
-                            size="x-small"
-                            variant="flat"
-                            class="mr-2"
-                          >
-                            {{ task.priority }}
-                          </v-chip>
-                          
-                          <span class="text-subtitle-2 font-weight-medium">
-                            {{ task.title }}
-                          </span>
-                        </div>
-                        
-                        <div class="d-flex align-center ga-1">
-                          <v-chip
-                            :color="getTaskStatusColor(task.columnId)"
-                            size="x-small"
-                            variant="tonal"
-                          >
-                            {{ getTaskStatusLabel(task.columnId) }}
-                          </v-chip>
-                          
-                          <v-btn
-                            icon="mdi-close"
-                            size="x-small"
-                            variant="text"
-                            @click="unlinkTask(task.id)"
-                          />
-                        </div>
-                      </div>
-                      
                       <div class="d-flex align-center justify-space-between">
-                        <div class="d-flex align-center">
-                          <!-- Assignees -->
-                          <div 
-                            v-if="task.assigneeIds && task.assigneeIds.length > 0" 
-                            class="d-flex align-center mr-3"
-                          >
-                            <v-avatar
-                              v-for="userId in task.assigneeIds.slice(0, 3)"
-                              :key="userId"
-                              size="24"
-                              class="assignee-avatar"
+                        <div class="flex-grow-1">
+                          <div class="d-flex align-center ga-2 mb-1">
+                            <h4 class="text-subtitle-2">{{ task.title }}</h4>
+                            <v-chip
+                              :color="getPriorityColor(task.priority)"
+                              size="x-small"
+                              variant="flat"
                             >
-                              <v-img :src="getUserById(userId)?.avatar" :alt="getUserById(userId)?.name" />
-                              <v-tooltip activator="parent" location="top">{{ getUserById(userId)?.name }}</v-tooltip>
-                            </v-avatar>
-                            <v-avatar v-if="task.assigneeIds.length > 3" size="24" color="grey-lighten-1" class="assignee-avatar">
-                              <span class="text-caption text-white">+{{ task.assigneeIds.length - 3 }}</span>
-                            </v-avatar>
+                              {{ task.priority }}
+                            </v-chip>
                           </div>
                           
-                          <!-- Tags -->
-                          <div v-if="task.tags?.length" class="d-flex align-center ga-1">
+                          <p v-if="task.description" class="text-body-2 text-medium-emphasis mb-2">
+                            {{ task.description }}
+                          </p>
+                          
+                          <div class="d-flex align-center gap-2">
                             <v-chip
-                              v-for="tag in task.tags.slice(0, 2)"
-                              :key="tag"
-                              size="x-small"
-                              variant="outlined"
+                              :color="getTaskStatusColor(task.columnId)"
+                              size="small"
+                              variant="flat"
                             >
-                              {{ tag }}
+                              {{ getTaskStatusLabel(task.columnId) }}
                             </v-chip>
-                            <span v-if="task.tags.length > 2" class="text-caption text-medium-emphasis">
-                              +{{ task.tags.length - 2 }}
-                            </span>
+                            
+                            <div v-if="task.assigneeIds?.length" class="assignee-avatars">
+                              <v-avatar
+                                v-for="assigneeId in task.assigneeIds.slice(0, 3)"
+                                :key="assigneeId"
+                                size="20"
+                                class="assignee-avatar"
+                              >
+                                <span class="text-caption">
+                                  {{ getUserById(assigneeId)?.name?.charAt(0) || '?' }}
+                                </span>
+                              </v-avatar>
+                              
+                              <span v-if="task.assigneeIds.length > 3" class="text-caption ml-1">
+                                +{{ task.assigneeIds.length - 3 }}
+                              </span>
+                            </div>
                           </div>
                         </div>
                         
-                        <!-- Due Date -->
-                        <div v-if="task.dueDate" class="text-caption text-medium-emphasis">
-                          Due {{ formatDate(task.dueDate) }}
-                        </div>
+                        <v-btn
+                          icon="mdi-link-off"
+                          size="small"
+                          variant="text"
+                          color="error"
+                          @click="unlinkTask(task.id)"
+                        />
                       </div>
                     </v-card-text>
                   </v-card>
                 </div>
                 
-                <div v-else class="text-center py-8">
-                  <v-icon size="48" color="grey-lighten-1" class="mb-2">mdi-link-off</v-icon>
-                  <p class="text-body-2 text-medium-emphasis">No tasks linked to this milestone</p>
-                  <v-btn
-                    size="small"
-                    variant="text"
-                    prepend-icon="mdi-link"
-                    @click="$emit('link-tasks', milestone)"
-                  >
-                    Link Tasks
-                  </v-btn>
+                <div v-else class="text-center py-6">
+                  <v-icon size="48" color="grey-lighten-2" class="mb-2">
+                    mdi-link-variant-off
+                  </v-icon>
+                  <p class="text-body-2 text-medium-emphasis">
+                    No tasks linked to this milestone
+                  </p>
                 </div>
               </div>
             </div>
           </v-col>
           
-          <!-- Right Column - Timeline -->
+          <!-- Right Column - Stats -->
           <v-col cols="12" md="4">
-            <v-card class="h-100" variant="flat">
-              <v-card-text class="pa-4">
-                <h3 class="text-h6 mb-3">Timeline</h3>
+            <div class="pa-4 bg-grey-lighten-5">
+              <h3 class="text-h6 mb-4">Statistics</h3>
+              
+              <div class="stats-grid">
+                <v-card class="stat-item pa-3 text-center">
+                  <div class="text-h4 font-weight-bold text-primary">
+                    {{ totalTasks }}
+                  </div>
+                  <div class="text-caption text-medium-emphasis">
+                    Total Tasks
+                  </div>
+                </v-card>
                 
-                <div class="timeline-bar mb-2">
-                  <div 
-                    class="timeline-progress bg-primary"
-                    :style="{ width: `${milestoneProgress}%` }"
-                  />
-                </div>
+                <v-card class="stat-item pa-3 text-center">
+                  <div class="text-h4 font-weight-bold text-success">
+                    {{ completedTasks }}
+                  </div>
+                  <div class="text-caption text-medium-emphasis">
+                    Completed
+                  </div>
+                </v-card>
                 
-                <div class="d-flex justify-space-between text-caption text-medium-emphasis mb-4">
-                  <span>{{ formatDate(milestone.start || milestone.startDate) }}</span>
-                  <span>{{ formatDate(milestone.end || milestone.endDate) }}</span>
-                </div>
+                <v-card class="stat-item pa-3 text-center">
+                  <div class="text-h4 font-weight-bold text-info">
+                    {{ inProgressTasks }}
+                  </div>
+                  <div class="text-caption text-medium-emphasis">
+                    In Progress
+                  </div>
+                </v-card>
                 
-                <!-- Team Assignment -->
-                <div v-if="milestone.teamId" class="mb-4">
-                  <h4 class="text-subtitle-2 mb-2">Assigned Team</h4>
-                  <v-chip size="small" variant="outlined">
-                    {{ getTeamName(milestone.teamId) }}
-                  </v-chip>
-                </div>
-                
-                <!-- Dependencies -->
-                <div v-if="milestone.dependencies?.length" class="mb-4">
-                  <h4 class="text-subtitle-2 mb-2">Dependencies</h4>
-                  <v-chip
-                    v-for="dep in milestone.dependencies"
-                    :key="dep"
-                    size="small"
-                    variant="outlined"
-                    class="mr-1 mb-1"
-                  >
-                    {{ dep }}
-                  </v-chip>
-                </div>
-              </v-card-text>
-            </v-card>
+                <v-card class="stat-item pa-3 text-center">
+                  <div class="text-h4 font-weight-bold text-warning">
+                    {{ remainingTasks }}
+                  </div>
+                  <div class="text-caption text-medium-emphasis">
+                    Remaining
+                  </div>
+                </v-card>
+              </div>
+              
+              <!-- Team Assignment -->
+              <div v-if="milestone.teamId" class="mt-4">
+                <h4 class="text-subtitle-2 mb-2">Assigned Team</h4>
+                <v-chip size="small" variant="outlined">
+                  {{ getTeamName(milestone.teamId) }}
+                </v-chip>
+              </div>
+              
+              <!-- Dependencies -->
+              <div v-if="milestone.dependencies?.length" class="mt-4">
+                <h4 class="text-subtitle-2 mb-2">Dependencies</h4>
+                <v-chip
+                  v-for="dep in milestone.dependencies"
+                  :key="dep"
+                  size="small"
+                  variant="outlined"
+                  class="mr-1 mb-1"
+                >
+                  {{ dep }}
+                </v-chip>
+              </div>
+            </div>
           </v-col>
         </v-row>
       </v-card-text>
@@ -427,7 +385,8 @@ const getMilestoneTypeColor = (type) => {
     milestone: 'primary',
     release: 'success',
     phase: 'info',
-    deadline: 'warning'
+    deadline: 'warning',
+    review: 'purple'
   }
   return colors[type] || 'primary'
 }
@@ -437,7 +396,8 @@ const getMilestoneTypeIcon = (type) => {
     milestone: 'mdi-flag',
     release: 'mdi-rocket-launch',
     phase: 'mdi-timeline',
-    deadline: 'mdi-clock-alert'
+    deadline: 'mdi-clock-alert',
+    review: 'mdi-eye'
   }
   return icons[type] || 'mdi-flag'
 }
@@ -524,9 +484,7 @@ const formatDate = (dateString) => {
 
 const editMilestone = () => {
   console.log('Edit milestone clicked:', props.milestone)
-  // Emit milestone-edit event to trigger the edit form in parent
   emit('milestone-edit', props.milestone)
-  // Close the details dialog
   emit('update:modelValue', false)
 }
 

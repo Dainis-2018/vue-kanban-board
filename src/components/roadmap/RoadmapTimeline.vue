@@ -80,15 +80,15 @@ const loadVisTimeline = async () => {
 // Helper functions
 const getItemStyle = (item) => {
   const colors = {
-    'in-progress': '#2196F3',
+    'inprogress': '#2196F3',
     'completed': '#4CAF50', 
-    'planned': '#FF9800',
+    'planning': '#FF9800',
     'overdue': '#F44336',
     'on-hold': '#9E9E9E'
   }
   
   const color = colors[item.status] || '#2196F3'
-  const opacity = item.status === 'completed' ? 1 : 0.8
+  const opacity = item.status === 'completed' ? 0.8 : 1
   
   return `background-color: ${color}; border-color: ${color}; opacity: ${opacity};`
 }
@@ -96,12 +96,7 @@ const getItemStyle = (item) => {
 const getItemGroup = (item) => {
   if (!props.groups) return undefined
   
-  // If groups are based on type
-  if (props.groups.some(g => ['milestone', 'release', 'phase'].includes(g.id))) {
-    return item.type || 'milestone'
-  }
-  
-  // If groups are team-based, we'd need additional logic here
+  // Return the group from the item itself
   return item.group || undefined
 }
 
@@ -135,14 +130,14 @@ const timelineItems = computed(() => {
 
       const timelineItem = {
         id: item.id,
-        content: item.title || item.content || 'Untitled',
+        content: item.content || item.title || 'Untitled',
         start: startDate,
         end: endDate,
         type: 'range',
-        className: `milestone-${item.status || 'default'}`,
-        style: getItemStyle(item),
-        title: `${item.title || 'Untitled'}\nProgress: ${item.progress || 0}%\nStatus: ${item.status || 'unknown'}`,
-        group: props.groups ? getItemGroup(item) : undefined
+        className: item.className || `milestone-${item.status || 'default'}`,
+        style: item.style || getItemStyle(item),
+        title: item.title || `${item.title || 'Untitled'}\nProgress: ${item.progress || 0}%\nStatus: ${item.status || 'unknown'}`,
+        group: getItemGroup(item)
       }
       
       console.log('Created timeline item:', timelineItem)
@@ -155,8 +150,9 @@ const timelineItems = computed(() => {
 })
 
 const defaultTimelineOptions = computed(() => ({
-  height: '400px',
+  height: props.options.height || '400px',
   stack: true,
+  stackSubgroups: true, // Enable stacking within subgroups
   showCurrentTime: true,
   zoomable: true,
   moveable: true,
@@ -170,7 +166,10 @@ const defaultTimelineOptions = computed(() => ({
   },
   orientation: 'top',
   margin: {
-    item: 10,
+    item: {
+      horizontal: 10,
+      vertical: 5 // Smaller vertical margin
+    },
     axis: 5
   },
   format: {
@@ -198,6 +197,13 @@ const defaultTimelineOptions = computed(() => ({
     }
   },
   zoomKey: 'ctrlKey',
+  groupOrder: 'order',
+  showMajorLabels: true,
+  showMinorLabels: true,
+  // Prevent overlapping
+  itemsAlwaysDraggable: false,
+  verticalScroll: true,
+  maxHeight: props.options.height || '400px',
   ...props.options
 }))
 
@@ -235,17 +241,15 @@ const initializeTimeline = async () => {
     console.log('Creating timeline with items:', timelineItems.value)
     console.log('Groups:', groups ? groups.get() : 'no groups')
 
-    // Create timeline with proper options
-    const finalOptions = {
-      ...defaultTimelineOptions.value,
-      ...(groups ? { groups } : {})
-    }
+    // Create timeline - IMPORTANT: Don't add groups to options, pass as separate parameter
+    const finalOptions = defaultTimelineOptions.value
     
-    timeline = new Timeline(
-      timelineContainer.value, 
-      items, 
-      finalOptions
-    )
+    // Create timeline with correct parameters
+    if (groups) {
+      timeline = new Timeline(timelineContainer.value, items, groups, finalOptions)
+    } else {
+      timeline = new Timeline(timelineContainer.value, items, finalOptions)
+    }
 
     console.log('Timeline created successfully')
 
@@ -253,7 +257,8 @@ const initializeTimeline = async () => {
     timeline.on('select', (event) => {
       console.log('Timeline select event:', event)
       if (event.items && event.items.length > 0) {
-        const selectedItem = props.items.find(item => item.id === event.items[0])
+        const selectedItemId = event.items[0]
+        const selectedItem = props.items.find(item => item.id === selectedItemId || `task-${item.id}` === selectedItemId)
         if (selectedItem) {
           emit('item-selected', selectedItem)
           emit('item-select', selectedItem) // Backward compatibility
@@ -264,7 +269,7 @@ const initializeTimeline = async () => {
     timeline.on('doubleClick', (event) => {
       console.log('Timeline double click event:', event)
       if (event.item) {
-        const selectedItem = props.items.find(item => item.id === event.item)
+        const selectedItem = props.items.find(item => item.id === event.item || `task-${item.id}` === event.item)
         if (selectedItem) {
           emit('item-double-click', selectedItem)
         }
@@ -290,24 +295,12 @@ const initializeTimeline = async () => {
           const originalItem = props.items.find(item => item.id === properties.id)
           
           if (updatedItem && originalItem) {
-            emit('item-moved', {
-              ...originalItem,
-              startDate: updatedItem.start,
-              endDate: updatedItem.end,
-              start: updatedItem.start,
-              end: updatedItem.end
-            })
+            emit('item-moved', properties.id, updatedItem.start, updatedItem.end)
           }
         }
       } catch (error) {
         console.error('Error handling timechange event:', error)
       }
-    })
-
-    // Alternative event listener for item updates
-    timeline.on('changed', (properties) => {
-      console.log('Timeline changed event:', properties)
-      // Handle the event safely - sometimes properties can be different formats
     })
 
     // Fit timeline to data if we have items
@@ -375,6 +368,12 @@ watch(() => props.items, async (newItems, oldItems) => {
       const items = new DataSet(timelineItems.value)
       timeline.setItems(items)
       
+      // Update groups if they exist
+      if (props.groups) {
+        const groups = new DataSet(props.groups)
+        timeline.setGroups(groups)
+      }
+      
       // Fit timeline after a short delay
       setTimeout(() => {
         try {
@@ -403,7 +402,7 @@ watch(() => props.options, () => {
   console.log('Options changed')
   if (timeline) {
     try {
-      timeline.setOptions({...defaultTimelineOptions.value, ...props.options})
+      timeline.setOptions(defaultTimelineOptions.value)
     } catch (error) {
       console.error('Error updating timeline options:', error)
     }
@@ -435,72 +434,13 @@ defineExpose({
 </script>
 
 <style scoped>
-.roadmap-timeline {
-  height: 400px;
-  width: 100%;
-  position: relative;
-}
-
 .timeline-container {
-  height: 100%;
   width: 100%;
+  height: 100%;
 }
 
-/* Global vis-timeline styles */
-:deep(.vis-timeline) {
-  border: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
-  border-radius: 8px;
-  font-family: inherit;
-}
-
-:deep(.vis-item) {
-  border-radius: 4px;
-  border-width: 1px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12), 0 1px 2px rgba(0, 0, 0, 0.24);
-}
-
-:deep(.vis-item.vis-selected) {
-  box-shadow: 0 3px 6px rgba(0, 0, 0, 0.16), 0 3px 6px rgba(0, 0, 0, 0.23);
-  border-width: 2px;
-}
-
-:deep(.milestone-in-progress) {
-  opacity: 0.9;
-}
-
-:deep(.milestone-completed) {
-  opacity: 1;
-}
-
-:deep(.milestone-planned) {
-  opacity: 0.7;
-}
-
-:deep(.milestone-overdue) {
-  animation: pulse 2s infinite;
-}
-
-:deep(.vis-time-axis .vis-text) {
-  color: rgba(var(--v-theme-on-surface), 0.87);
-}
-
-:deep(.vis-time-axis .vis-grid.vis-minor) {
-  border-color: rgba(var(--v-border-color), 0.12);
-}
-
-:deep(.vis-time-axis .vis-grid.vis-major) {
-  border-color: rgba(var(--v-border-color), 0.24);
-}
-
-@keyframes pulse {
-  0% {
-    box-shadow: 0 0 0 0 rgba(244, 67, 54, 0.7);
-  }
-  70% {
-    box-shadow: 0 0 0 10px rgba(244, 67, 54, 0);
-  }
-  100% {
-    box-shadow: 0 0 0 0 rgba(244, 67, 54, 0);
-  }
+.roadmap-timeline {
+  width: 100%;
+  height: 100%;
 }
 </style>
